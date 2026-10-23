@@ -289,7 +289,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[100dvh] w-full overflow-x-clip">
       <Header onOpenSettings={() => setShowSettings(true)} hasKey={hasKey} />
 
       <main className="mx-auto max-w-xl px-4 pt-5 pb-28 space-y-5">
@@ -440,8 +440,10 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] px-4 py-2.5 rounded-full bg-cocoa-800 text-white text-sm shadow-lg pop max-w-[90vw] text-center">
-          {toast}
+        <div className="fixed inset-x-0 bottom-24 z-[60] flex justify-center px-4 pointer-events-none" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="px-4 py-2.5 rounded-2xl bg-cocoa-800 text-white text-sm shadow-lg pop max-w-full text-center break-keep">
+            {toast}
+          </div>
         </div>
       )}
     </div>

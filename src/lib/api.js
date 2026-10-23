@@ -14,9 +14,9 @@ export const PROVIDERS = {
   gemini: {
     label: 'Google Gemini',
     models: [
-      { id: 'gemini-3.1-flash-image', label: 'Nano Banana 2 · gemini-3.1-flash-image (추천)' },
-      { id: 'gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite (저렴·빠름)' },
-      { id: 'gemini-3-pro-image', label: 'Nano Banana Pro · gemini-3-pro-image (고품질·비쌈)' },
+      { id: 'gemini-3.1-flash-image', label: '나노바나나 2 (추천)' },
+      { id: 'gemini-3.1-flash-lite-image', label: '나노바나나 2 라이트 (저렴·빠름)' },
+      { id: 'gemini-3-pro-image', label: '나노바나나 프로 (고품질·비쌈)' },
     ],
     keyUrl: 'https://aistudio.google.com/apikey',
     bgMode: 'chroma',

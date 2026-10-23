@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 html, body { background: #F4EEE5; color: #3E2C22; -webkit-tap-highlight-color: transparent; }
+/* 스마트폰 고정: 가로로 밀리거나 흔들리지 않게 */
+html, body { width: 100%; max-width: 100%; overflow-x: hidden; overflow-x: clip; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+#root { width: 100%; max-width: 100vw; overflow-x: clip; }
+button, a, input, select, label { touch-action: manipulation; }
+img { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
+/* iOS는 16px 미만 입력칸을 누르면 화면을 확대함 → 16px로 */
+input, select, textarea { font-size: 16px !important; }
 body {
   font-family: 'Noto Sans KR', system-ui, sans-serif;
   background-image: radial-gradient(rgba(154,123,102,.10) 1px, transparent 1px);
@@ -19,7 +26,7 @@ body {
   .seg-btn { @apply flex-1 rounded-xl py-2.5 text-sm font-bold text-cocoa-400 transition; }
   .seg-btn[aria-pressed='true'] { @apply bg-white text-cocoa-800 shadow-sm; }
   .label { @apply text-xs font-bold text-cocoa-400 mb-1.5 block; }
-  .input { @apply w-full rounded-xl border border-cream-200 bg-cream-50 px-3 py-2.5 text-sm outline-none focus:border-peach-400 focus:ring-2 focus:ring-peach-300/40; }
+  .input { @apply w-full min-w-0 rounded-xl border border-cream-200 bg-cream-50 px-3 py-2.5 text-base outline-none focus:border-peach-400 focus:ring-2 focus:ring-peach-300/40; }
 }
 
 /* 체커보드: 투명 배경 확인용 */
@@ -38,3 +45,7 @@ body {
 .pop { animation: pop .35s cubic-bezier(.2,.9,.3,1.3) both; }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .shimmer { background: linear-gradient(90deg, #F4EEE5 25%, #FBF8F3 50%, #F4EEE5 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bob, .pop, .shimmer, .animate-spin { animation: none !important; }
+}

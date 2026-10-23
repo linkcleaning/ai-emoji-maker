@@ -13,7 +13,7 @@ export default function SettingsModal({ settings, onSave, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-cocoa-800/40 grid place-items-end sm:place-items-center" onClick={onClose}>
       <div
-        className="card w-full sm:max-w-md rounded-b-none sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto pop"
+        className="card w-full sm:max-w-md rounded-b-none sm:rounded-3xl p-5 max-h-[90dvh] overflow-y-auto overscroll-contain pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

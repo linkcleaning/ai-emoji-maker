@@ -40,11 +40,11 @@ export default function Header({ onOpenSettings, hasKey }) {
             <div className="w-9 h-9 rounded-xl bg-peach-400 grid place-items-center text-white shadow-sticker">
               <Sparkles size={18} />
             </div>
-            <h1 className="font-display text-xl text-cocoa-800 truncate">AI 이모티콘 메이커</h1>
+            <h1 className="font-display text-lg min-[380px]:text-xl text-cocoa-800 truncate">AI 이모티콘<span className="hidden min-[360px]:inline"> 메이커</span></h1>
           </div>
           {showInstall && (
             <button onClick={install} className="btn-ghost !px-3 !py-2 !text-xs" aria-label="앱 설치">
-              <Download size={15} /> 설치
+              <Download size={15} /><span className="hidden min-[400px]:inline">설치</span>
             </button>
           )}
           <button

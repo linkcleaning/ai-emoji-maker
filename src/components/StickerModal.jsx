@@ -3,8 +3,8 @@ import { X, Download, Share2, RotateCw, ChevronLeft, ChevronRight } from 'lucide
 export default function StickerModal({ sticker, index, total, onClose, onNav, onSave, onShare, onRegenerate, busy }) {
   if (!sticker) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-cocoa-800/50 grid place-items-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-sm p-5 pop" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-cocoa-800/50 grid place-items-center p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
+      <div className="card w-full max-w-sm p-4 sm:p-5 pop" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-cocoa-400">{index + 1} / {total}</span>
           <button onClick={onClose} aria-label="닫기" className="p-1"><X size={22} /></button>
