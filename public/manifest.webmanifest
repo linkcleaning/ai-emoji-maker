@@ -1,0 +1,16 @@
+{
+  "name": "AI 이모티콘 메이커",
+  "short_name": "이모티콘",
+  "description": "사진 한 장으로 나만의 12종 이모티콘 스티커 팩 만들기",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4EEE5",
+  "theme_color": "#F4EEE5",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
