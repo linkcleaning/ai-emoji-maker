@@ -16,12 +16,16 @@ export function downloadDataUrl(dataUrl, filename) {
   downloadBlob(dataUrlToBlob(dataUrl), filename);
 }
 
-export async function downloadZip(stickers, filename = 'my-emoji-pack.zip', sheetUrl) {
+export async function downloadZip(stickers, filename = 'my-emoji-pack.zip', sheetUrl, originals) {
   const zip = new JSZip();
   const folder = zip.folder('stickers');
   stickers.forEach((s, i) => {
     if (s.url) folder.file(`${String(i + 1).padStart(2, '0')}_${s.id}.png`, dataUrlToBlob(s.url));
   });
+  if (originals) {
+    const big = zip.folder('original_768');
+    originals.forEach((s, i) => { if (s.url) big.file(`${String(i + 1).padStart(2, '0')}_${s.id}.png`, dataUrlToBlob(s.url)); });
+  }
   if (sheetUrl) zip.file('sticker-sheet.png', dataUrlToBlob(sheetUrl));
   const blob = await zip.generateAsync({ type: 'blob' });
   downloadBlob(blob, filename);

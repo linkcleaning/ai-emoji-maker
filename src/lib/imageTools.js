@@ -277,3 +277,26 @@ export async function toJpegRef(dataUrl, max = 768) {
   ctx.drawImage(img, 0, 0, c.width, c.height);
   return dataUrlToRef(c.toDataURL('image/jpeg', 0.88));
 }
+
+/**
+ * 보내기용 크기 줄이기 (투명 배경 유지, PNG)
+ * 한 번에 많이 줄이면 테두리가 거칠어져서 절반씩 단계적으로 줄임
+ */
+export async function resizeSticker(dataUrl, px) {
+  const img = await loadImage(dataUrl);
+  if (!px || px >= img.width) return dataUrl;
+  let src = img, w = img.width;
+  while (w / 2 >= px) {
+    w = Math.round(w / 2);
+    const c = makeCanvas(w, w);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, w);
+    src = c;
+  }
+  const out = makeCanvas(px, px);
+  const ctx = out.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, px, px);
+  return out.toDataURL('image/png');
+}

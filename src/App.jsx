@@ -8,7 +8,7 @@ import Gallery from './components/Gallery.jsx';
 import StickerModal from './components/StickerModal.jsx';
 import { CATEGORIES, STYLES, EMOTIONS, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
-import { prepareUpload, processSticker, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet } from './lib/imageTools.js';
+import { prepareUpload, processSticker, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, downloadZip, shareImages } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   openaiQuality: 'medium',
   mode: 'individual',
   postprocess: true,
+  sendSize: 200, // 카톡·문자로 보낼 크기(px). 0 = 원본
 };
 
 function loadSettings() {
@@ -251,22 +252,37 @@ export default function App() {
 
   // ── 내보내기 ─────────────────────────────
   const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${s.id}.png`;
-  const saveOne = (i) => downloadDataUrl(stickers[i].url, fileName(stickers[i], i));
+  const sendSize = settings.sendSize ?? 200;
+  const setSendSize = (v) => { const s = { ...settings, sendSize: v }; setSettings(s); saveSettings(s); };
+  // 공유 버튼을 누른 순간 바로 보낼 수 있게(아이폰은 지연되면 공유가 막힘) 미리 줄여둠
+  const [sizedMap, setSizedMap] = useState({});
+  useEffect(() => {
+    let alive = true;
+    const urls = stickers.map((s) => s.url).filter(Boolean);
+    Promise.all(urls.map(async (u) => [u, await resizeSticker(u, sendSize)])).then((pairs) => {
+      if (alive) setSizedMap(Object.fromEntries(pairs.map(([u, v]) => [`${sendSize}|${u}`, v])));
+    });
+    return () => { alive = false; };
+  }, [stickers, sendSize]);
+  const sized = async (url) => sizedMap[`${sendSize}|${url}`] || resizeSticker(url, sendSize); // 보낼 크기로 줄인 PNG
+  const saveOne = async (i) => downloadDataUrl(await sized(stickers[i].url), fileName(stickers[i], i));
   const shareOne = async (i) => {
-    const r = await shareImages([{ url: stickers[i].url, name: fileName(stickers[i], i) }]);
-    if (r === 'unsupported') { saveOne(i); notify('이 브라우저는 공유를 지원하지 않아 저장했어요.'); }
+    const r = await shareImages([{ url: await sized(stickers[i].url), name: fileName(stickers[i], i) }]);
+    if (r === 'unsupported') { await saveOne(i); notify('이 브라우저는 공유를 지원하지 않아 저장했어요.'); }
   };
   const zipAll = async () => {
     const urls = stickers.map((s) => s.url);
     const sheet = await composeSheet(urls);
-    await downloadZip(stickers, 'ai-emoji-pack.zip', sheet);
+    const small = await Promise.all(stickers.map(async (s) => ({ ...s, url: s.url ? await sized(s.url) : null })));
+    // ZIP: 보낼 크기 + 원본(768px) 둘 다 담음
+    await downloadZip(small, 'ai-emoji-pack.zip', sheet, sendSize ? stickers : null);
     notify('ZIP 다운로드를 시작했어요.');
   };
   const saveSheet = async () => {
     downloadDataUrl(await composeSheet(stickers.map((s) => s.url)), 'ai-emoji-sheet.png');
   };
   const shareAll = async () => {
-    const items = stickers.map((s, i) => (s.url ? { url: s.url, name: fileName(s, i) } : null)).filter(Boolean);
+    const items = (await Promise.all(stickers.map(async (s, i) => (s.url ? { url: await sized(s.url), name: fileName(s, i) } : null)))).filter(Boolean);
     const r = await shareImages(items);
     if (r === 'unsupported') { await zipAll(); notify('공유 미지원 브라우저라 ZIP으로 저장했어요.'); }
   };
@@ -385,6 +401,16 @@ export default function App() {
               <h2 className="font-display text-xl">내 이모티콘 팩</h2>
               <span className="text-xs font-bold text-cocoa-400">{doneCount}/12 완성</span>
             </div>
+            {doneCount > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold text-cocoa-400 shrink-0">보낼 크기</span>
+                <div className="seg flex-1 !p-0.5">
+                  {[[160, '아주 작게'], [200, '작게'], [360, '보통'], [0, '원본']].map(([v, l]) => (
+                    <button key={v} className="seg-btn !py-1.5 !text-xs" aria-pressed={sendSize === v} onClick={() => setSendSize(v)}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             {failedCount > 0 && !busy && (
               <button onClick={retryFailed} className="btn-ghost w-full mb-3 !border-2 !border-peach-300">
                 실패한 것만 다시 ({failedCount}장)
