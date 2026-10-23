@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Volume2, VolumeX } from 'lucide-react';
+import { isMuted, setMuted, onMuteChange } from '../lib/sound.js';
 import LottoMachine from './LottoMachine.jsx';
 
 const TIPS = [
@@ -29,10 +30,20 @@ export default function ProgressPanel({ done, total, stage, onCancel, icons = ['
     }
     prev.current = done;
   }, [done]);
+  const [muted, setM] = useState(isMuted());
+  useEffect(() => onMuteChange(setM), []);
   const pct = Math.round((done / total) * 100);
 
   return (
-    <div className="card p-4">
+    <div className="card p-4 relative">
+      <button
+        onClick={() => setMuted(!muted)}
+        className="absolute top-3 left-3 z-10 grid place-items-center w-9 h-9 rounded-full bg-cream-100 text-cocoa-600 active:scale-95"
+        aria-label={muted ? '소리 켜기' : '소리 끄기'}
+        aria-pressed={!muted}
+      >
+        {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+      </button>
       <LottoMachine icons={icons} doneFlags={doneFlags} busy={busy} onSettled={onSettled} />
       <div className="flex items-baseline justify-between gap-2 mt-2 mb-0.5">
         <p className="font-display text-base min-[400px]:text-lg leading-snug break-keep">
