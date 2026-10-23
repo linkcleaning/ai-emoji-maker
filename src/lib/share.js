@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { dataUrlToBlob } from './imageTools.js';
 
 export function downloadBlob(blob, filename) {
@@ -17,21 +16,6 @@ export function downloadDataUrl(dataUrl, filename) {
 }
 
 export const safeName = (s) => String(s).replace(/^custom:/, '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40);
-
-export async function downloadZip(stickers, filename = 'my-emoji-pack.zip', sheetUrl, originals) {
-  const zip = new JSZip();
-  const folder = zip.folder('stickers');
-  stickers.forEach((s, i) => {
-    if (s.url) folder.file(`${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.png`, dataUrlToBlob(s.url));
-  });
-  if (originals) {
-    const big = zip.folder('original_768');
-    originals.forEach((s, i) => { if (s.url) big.file(`${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.png`, dataUrlToBlob(s.url)); });
-  }
-  if (sheetUrl) zip.file('sticker-sheet.png', dataUrlToBlob(sheetUrl));
-  const blob = await zip.generateAsync({ type: 'blob' });
-  downloadBlob(blob, filename);
-}
 
 /**
  * 공유: Web Share API(파일) → 모바일에서 카카오톡/인스타 등 공유 시트가 열림

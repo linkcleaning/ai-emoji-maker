@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Wand2, PackageOpen, Share2, LayoutGrid, Info } from 'lucide-react';
+import { Wand2, Share2, LayoutGrid, Info } from 'lucide-react';
 import Header from './components/Header.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import Uploader from './components/Uploader.jsx';
@@ -15,7 +15,7 @@ import { fetchServerConfig, fetchMe, startPack, getAdminPw } from './lib/server.
 import InstallGuide from './components/InstallGuide.jsx';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
-import { downloadDataUrl, downloadZip, shareImages, safeName } from './lib/share.js';
+import { downloadDataUrl, shareImages, safeName } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
 // 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
@@ -342,14 +342,6 @@ export default function App() {
     const r = await shareImages([{ url: await sized(stickers[i].url), name: fileName(stickers[i], i) }]);
     if (r === 'unsupported') { await saveOne(i); notify('이 브라우저는 바로 보내기를 지원하지 않아 저장했어요.'); }
   };
-  const zipAll = async () => {
-    const urls = stickers.map((s) => s.url);
-    const sheet = await composeSheet(urls);
-    const small = await Promise.all(stickers.map(async (s) => ({ ...s, url: s.url ? await sized(s.url) : null })));
-    // ZIP: 보낼 크기 + 원본(768px) 둘 다 담음
-    await downloadZip(small, 'jjigeo-emoji-pack.zip', sheet, sendSize ? stickers : null);
-    notify('ZIP 다운로드를 시작했어요.');
-  };
   // 시트(12장 한 장) — 누르는 즉시 공유 창이 뜨도록 미리 만들어 둠
   const [sheetUrl, setSheetUrl] = useState(null);
   useEffect(() => {
@@ -366,7 +358,7 @@ export default function App() {
   const shareAll = async () => {
     const items = (await Promise.all(stickers.map(async (s, i) => (s.url ? { url: await sized(s.url), name: fileName(s, i) } : null)))).filter(Boolean);
     const r = await shareImages(items);
-    if (r === 'unsupported') { await zipAll(); notify('이 브라우저는 바로 보내기를 지원하지 않아 ZIP으로 저장했어요.'); }
+    if (r === 'unsupported') notify('이 브라우저는 바로 보내기를 지원하지 않아요. 스티커를 눌러 하나씩 저장해 주세요.');
   };
 
   const nav = (d) => {
@@ -531,7 +523,7 @@ export default function App() {
             </div>
             {doneCount > 0 && (
               <p className="text-[11px] text-cocoa-400 mt-3 flex items-center gap-1">
-                <Info size={12} /> 스티커를 누르면 한 장씩 크게 보고 바로 보낼 수 있어요.
+                <Info size={12} /> 스티커를 누르면 하나씩 크게 보고 카톡으로 바로 보낼 수 있어요.
               </p>
             )}
           </section>
@@ -550,10 +542,9 @@ export default function App() {
       {/* 하단 고정 액션바 */}
       {doneCount > 0 && !busy && (
         <div className="fixed bottom-0 inset-x-0 z-40 bg-cream-100/90 backdrop-blur-md border-t border-cream-200 pb-[env(safe-area-inset-bottom)]">
-          <div className="mx-auto max-w-xl px-4 py-3 grid grid-cols-[1fr_auto_auto] gap-2">
-            <button onClick={shareSheet} className="btn-primary"><LayoutGrid size={17} /> 시트 보내기</button>
-            <button onClick={shareAll} className="btn-ghost" aria-label="12장 따로 보내기"><Share2 size={17} /> 12장</button>
-            <button onClick={zipAll} className="btn-ghost" aria-label="ZIP 파일로 저장"><PackageOpen size={17} /> ZIP</button>
+          <div className="mx-auto max-w-xl px-4 py-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+            <button onClick={shareAll} className="btn-primary"><Share2 size={17} /> 12장 모두 보내기</button>
+            <button onClick={shareSheet} className="btn-ghost !px-3 !py-2 !text-xs text-cocoa-400" aria-label="12장을 한 장에 모은 시트 보내기"><LayoutGrid size={15} /> 시트</button>
           </div>
         </div>
       )}
