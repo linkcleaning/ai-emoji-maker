@@ -40,6 +40,11 @@ src/components/*       ← UI
 public/sw.js, manifest.webmanifest ← PWA
 ```
 
+## 비용 · 결제 (중요)
+- **Gemini 이미지 모델은 무료 할당량이 없습니다.** Google AI Studio에서 결제(빌링)를 연결해야 생성돼요. 연결 안 하면 `429 You exceeded your current quota` 오류가 납니다.
+- 기본 모델 `gemini-3.1-flash-image`(Nano Banana 2): 1024px 한 장 약 $0.067 → 12장 팩 약 $0.8. 더 싸게: `gemini-3.1-flash-lite-image`, 시트 1장 모드(호출 1회).
+- `gemini-2.5-flash-image`는 신규 사용자에게 막혀 있어 목록에서 뺐습니다.
+
 ## 참고
 - API 키를 브라우저에서 직접 쓰는 구조라 **개인용/사내용**에 적합합니다. 공개 서비스로 운영하려면 키를 서버(Cloudflare Worker 등)로 옮기세요.
 - 카카오톡 공유는 Web Share API(모바일 공유 시트)를 사용합니다. 공유 미지원 브라우저(대부분 PC)는 자동으로 다운로드됩니다.

@@ -28,7 +28,13 @@ const DEFAULT_SETTINGS = {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+    if (!raw) return DEFAULT_SETTINGS;
+    const s = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    // 종료/변경된 모델 ID는 현재 기본 모델로 교체
+    if (!PROVIDERS.gemini.models.some((m) => m.id === s.geminiModel)) s.geminiModel = DEFAULT_SETTINGS.geminiModel;
+    if (!PROVIDERS.openai.models.some((m) => m.id === s.openaiModel)) s.openaiModel = DEFAULT_SETTINGS.openaiModel;
+    if (!PROVIDERS[s.provider]) s.provider = DEFAULT_SETTINGS.provider;
+    return s;
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -50,6 +56,7 @@ export default function App() {
   const [stage, setStage] = useState('');
   const [viewIdx, setViewIdx] = useState(null);
   const [toast, setToast] = useState(null);
+  const [fatal, setFatal] = useState(null); // 키·할당량·모델 문제처럼 다시 해도 안 되는 오류
 
   const abortRef = useRef(null);
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
@@ -94,7 +101,8 @@ export default function App() {
       return raw;
     } catch (e) {
       if (e.name === 'AbortError') { patch(i, { status: 'idle' }); throw e; }
-      patch(i, { status: 'error', error: e.message });
+      patch(i, { status: 'error', error: e.short || '생성 실패', detail: e.message });
+      if (e.fatal) throw e; // 나머지 요청을 보내지 않고 바로 멈춤
       return null;
     }
   };
@@ -109,6 +117,7 @@ export default function App() {
     optsRef.current = { category, style };
     const opts = optsRef.current;
     setStickers(emptyStickers());
+    setFatal(null);
     setBusy(true);
 
     try {
@@ -147,8 +156,11 @@ export default function App() {
         notify('생성을 중단했어요.');
         setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'idle' } : s)));
       } else {
-        setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'error', error: e.message } : s)));
-        notify(e.message);
+        setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'error', error: e.short || '생성 실패', detail: e.message } : s)));
+        if (e.fatal) {
+          setFatal({ message: e.message, help: e.help, detail: e.detail });
+          setStickers((arr) => arr.map((s) => (s.status === 'error' ? s : { ...s, status: 'idle' })));
+        } else notify(e.message);
       }
     } finally {
       setBusy(false);
@@ -174,7 +186,10 @@ export default function App() {
     try {
       const raw = await generateOne(i, { signal: ctrl.signal, opts: optsRef.current });
       if (raw && !anchorRef.current) anchorRef.current = dataUrlToRef(raw);
-    } catch { /* 중단 */ }
+      if (raw) setFatal(null);
+    } catch (e) {
+      if (e?.fatal) setFatal({ message: e.message, help: e.help, detail: e.detail });
+    }
     setBusy(false);
     abortRef.current = null;
   };
@@ -286,6 +301,25 @@ export default function App() {
             {PROVIDERS[settings.provider].label}{isDemo && !photo ? ' · 사진 없이도 체험 가능' : ''} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}
           </p>
         </section>
+
+        {fatal && !busy && (
+          <section className="rounded-3xl border-2 border-peach-300 bg-white p-4" role="alert">
+            <p className="font-bold text-sm mb-1">⚠️ 이모티콘을 만들 수 없어요</p>
+            <p className="text-sm text-cocoa-600 leading-relaxed">{fatal.message}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {fatal.help && (
+                <a href={fatal.help.url} target="_blank" rel="noreferrer" className="btn-primary !py-2.5">{fatal.help.label}</a>
+              )}
+              <button onClick={() => setShowSettings(true)} className="btn-ghost !py-2.5">설정 열기</button>
+            </div>
+            {fatal.detail && (
+              <details className="mt-3 text-[11px] text-cocoa-400">
+                <summary className="cursor-pointer">자세한 오류 내용</summary>
+                <p className="mt-1 break-words">{fatal.detail}</p>
+              </details>
+            )}
+          </section>
+        )}
 
         {busy && <ProgressPanel done={settledCount} total={12} stage={stage} onCancel={cancel} />}
 

@@ -14,8 +14,9 @@ export const PROVIDERS = {
   gemini: {
     label: 'Google Gemini',
     models: [
-      { id: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image (나노바나나 · 추천)' },
-      { id: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image (나노바나나 Pro · 고품질)' },
+      { id: 'gemini-3.1-flash-image', label: 'Nano Banana 2 · gemini-3.1-flash-image (추천)' },
+      { id: 'gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite (저렴·빠름)' },
+      { id: 'gemini-3-pro-image', label: 'Nano Banana Pro · gemini-3-pro-image (고품질·비쌈)' },
     ],
     keyUrl: 'https://aistudio.google.com/apikey',
     bgMode: 'chroma',
@@ -31,15 +32,36 @@ export const PROVIDERS = {
   },
 };
 
+// 사용자에게 보여줄 짧은 오류 + 더 시도해도 소용없는 오류(fatal) 구분
 async function readError(res) {
-  let msg = `HTTP ${res.status}`;
+  let raw = `HTTP ${res.status}`;
   try {
     const j = await res.json();
-    msg = j?.error?.message || j?.message || msg;
+    raw = j?.error?.message || j?.message || raw;
   } catch { /* ignore */ }
-  if (res.status === 401 || res.status === 403) msg = `API 키가 올바르지 않거나 권한이 없어요. (${msg})`;
-  if (res.status === 429) msg = `요청 한도를 초과했어요. 잠시 후 다시 시도해 주세요. (${msg})`;
-  return new Error(msg);
+  const low = raw.toLowerCase();
+  let msg = raw, short = '생성 실패', fatal = false, help = null;
+  if (res.status === 429 && (low.includes('quota') || low.includes('billing') || low.includes('limit: 0'))) {
+    fatal = true; short = '할당량 없음';
+    msg = 'Gemini 이미지 생성은 무료로 쓸 수 없어요. Google AI Studio에서 결제(빌링)를 연결해야 해요.';
+    help = { label: 'AI Studio에서 결제 연결하기', url: 'https://aistudio.google.com/usage' };
+  } else if (res.status === 429) {
+    short = '잠시 후 다시'; msg = '요청이 너무 몰렸어요. 잠시 후 [다시]를 눌러주세요.';
+  } else if (res.status === 401 || res.status === 403 || (res.status === 400 && low.includes('api key'))) {
+    fatal = true; short = 'API 키 오류';
+    msg = 'API 키가 올바르지 않거나 권한이 없어요. 설정에서 키를 다시 확인해 주세요.';
+  } else if (res.status === 404 || low.includes('not found') || low.includes('no longer available') || low.includes('deprecated')) {
+    fatal = true; short = '모델 없음';
+    msg = '선택한 AI 모델을 쓸 수 없어요. 설정에서 다른 모델을 골라주세요.';
+  } else if (low.includes('billing') || low.includes('payment')) {
+    fatal = true; short = '결제 필요';
+    msg = '이 모델은 결제(빌링)가 연결된 계정에서만 쓸 수 있어요.';
+    help = { label: '결제 연결하기', url: 'https://aistudio.google.com/usage' };
+  }
+  if (res.status === 401 && raw.includes('platform.openai')) help = null;
+  const err = new Error(msg);
+  Object.assign(err, { short, fatal, help, detail: raw, status: res.status });
+  return err;
 }
 
 /**
@@ -68,7 +90,9 @@ async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', sig
   const inline = img?.inlineData || img?.inline_data;
   if (!inline?.data) {
     const reason = cand?.finishReason || data?.promptFeedback?.blockReason || '알 수 없음';
-    throw new Error(`이미지가 생성되지 않았어요 (사유: ${reason}). 다른 사진으로 시도하거나 다시 생성해 보세요.`);
+    const e = new Error(`이미지가 만들어지지 않았어요 (사유: ${reason}). [다시]를 누르거나 다른 사진으로 해보세요.`);
+    e.short = reason === 'SAFETY' || reason === 'PROHIBITED_CONTENT' ? '안전 필터' : '생성 안 됨';
+    throw e;
   }
   return `data:${inline.mimeType || inline.mime_type || 'image/png'};base64,${inline.data}`;
 }
