@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Share, MoreVertical, PlusSquare } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && typeof document !== 'undefined' && 'ontouchend' in document);
@@ -7,11 +7,17 @@ const isAndroid = /android/i.test(ua);
 const isKakao = /kakaotalk/i.test(ua);
 const isInApp = isKakao || /naver\(inapp|instagram|fban|fbav|line\//i.test(ua);
 
-/** 맨 아래 '홈 화면에 앱으로 설치하기' 안내 — 아이폰 / 안드로이드 구분 */
+const STEPS = {
+  ios: ['Safari로 열기', '아래 공유 버튼(↑) 누르기', '홈 화면에 추가 → 추가'],
+  android: ['Chrome으로 열기', '오른쪽 위 ⋮ 메뉴', '홈 화면에 추가(앱 설치) → 설치'],
+};
+
+/** 맨 아래 작은 '홈 화면에 추가' — 누르면 그 폰에 맞는 방법만 짧게 펼침 */
 export default function InstallGuide() {
   const [deferred, setDeferred] = useState(null);
   const [installed, setInstalled] = useState(false);
-  const [tab, setTab] = useState(isAndroid ? 'android' : 'ios');
+  const [open, setOpen] = useState(false);
+  const [os, setOs] = useState(isAndroid ? 'android' : 'ios');
   const standalone = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
 
   useEffect(() => {
@@ -25,58 +31,39 @@ export default function InstallGuide() {
     };
   }, []);
 
-  if (standalone || installed) return null; // 이미 앱으로 설치해서 여는 중
+  if (standalone || installed) return null;
 
-  const installNow = async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    await deferred.userChoice;
-    setDeferred(null);
+  const onTap = async () => {
+    if (deferred && !isInApp) { // 안드로이드 크롬: 바로 설치 창
+      deferred.prompt();
+      await deferred.userChoice;
+      setDeferred(null);
+      return;
+    }
+    setOpen((v) => !v);
   };
 
   return (
-    <section className="card p-4" aria-labelledby="install-title">
-      <h2 id="install-title" className="font-display text-lg mb-1 flex items-center gap-2">📲 홈 화면에 앱으로 설치하기</h2>
-      <p className="text-xs text-cocoa-400 mb-3">설치하면 다음부터 앱처럼 바로 열 수 있어요.</p>
+    <div className="text-center">
+      <button onClick={onTap} className="inline-flex items-center gap-1 rounded-full bg-white/70 border border-cream-200 px-3 py-1.5 text-xs font-bold text-cocoa-600" aria-expanded={open}>
+        📲 홈 화면에 추가하기 <ChevronDown size={13} className={`transition ${open ? 'rotate-180' : ''}`} />
+      </button>
 
-      {isInApp && (
-        <div className="rounded-2xl bg-peach-300/20 border border-peach-300 p-3 mb-3 text-xs text-cocoa-800 leading-relaxed break-keep">
-          <b>{isKakao ? '카카오톡' : '앱'} 안에서 열려 있어서 설치가 안 돼요.</b><br />
-          {isIOS
-            ? <>오른쪽 아래 <b>공유(↗) 또는 ⋯</b> → <b>Safari로 열기</b>를 누른 뒤 아래 방법대로 해주세요.</>
-            : <>오른쪽 위 <b>⋮</b> → <b>다른 브라우저로 열기</b>(Chrome)를 누른 뒤 아래 방법대로 해주세요.</>}
-        </div>
-      )}
-
-      <div className="seg mb-3" role="tablist">
-        <button role="tab" className="seg-btn" aria-pressed={tab === 'ios'} onClick={() => setTab('ios')}>🍎 아이폰</button>
-        <button role="tab" className="seg-btn" aria-pressed={tab === 'android'} onClick={() => setTab('android')}>🤖 안드로이드</button>
-      </div>
-
-      {tab === 'ios' ? (
-        <ol className="space-y-2 text-sm text-cocoa-800">
-          <li className="flex gap-3 items-start"><Step n={1} /><span><b>Safari</b>로 이 페이지를 열어주세요. (크롬·카톡에서는 안 돼요)</span></li>
-          <li className="flex gap-3 items-start"><Step n={2} /><span>화면 아래 <Share size={15} className="inline -mt-0.5" /> <b>공유</b> 버튼을 누르세요.</span></li>
-          <li className="flex gap-3 items-start"><Step n={3} /><span>목록을 내려서 <PlusSquare size={15} className="inline -mt-0.5" /> <b>홈 화면에 추가</b>를 누르세요.</span></li>
-          <li className="flex gap-3 items-start"><Step n={4} /><span>오른쪽 위 <b>추가</b>를 누르면 끝!</span></li>
-        </ol>
-      ) : (
-        <div>
-          {deferred && (
-            <button onClick={installNow} className="btn-primary w-full mb-3"><Download size={17} /> 바로 설치하기</button>
+      {open && (
+        <div className="mt-2 mx-auto max-w-xs rounded-2xl bg-white/80 border border-cream-200 px-3 py-2.5 text-[11px] text-cocoa-600 text-left leading-relaxed">
+          {isInApp && (
+            <p className="text-peach-600 font-bold mb-1 break-keep">
+              {isKakao ? '카카오톡' : '앱'} 안에서는 설치가 안 돼요. 먼저 {isIOS ? '⋯ → Safari로 열기' : '⋮ → 다른 브라우저로 열기'}를 눌러주세요.
+            </p>
           )}
-          <ol className="space-y-2 text-sm text-cocoa-800">
-            <li className="flex gap-3 items-start"><Step n={1} /><span><b>Chrome</b>(크롬)으로 이 페이지를 열어주세요.</span></li>
-            <li className="flex gap-3 items-start"><Step n={2} /><span>오른쪽 위 <MoreVertical size={15} className="inline -mt-0.5" /> <b>메뉴</b>를 누르세요.</span></li>
-            <li className="flex gap-3 items-start"><Step n={3} /><span><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 누르세요.</span></li>
-            <li className="flex gap-3 items-start"><Step n={4} /><span><b>설치</b>를 누르면 끝!</span></li>
-          </ol>
+          <p className="break-keep">
+            <b>{os === 'ios' ? '아이폰' : '안드로이드'}</b> : {STEPS[os].join(' → ')}
+          </p>
+          <button onClick={() => setOs(os === 'ios' ? 'android' : 'ios')} className="mt-1 text-cocoa-400 underline underline-offset-2">
+            {os === 'ios' ? '안드로이드' : '아이폰'} 방법 보기
+          </button>
         </div>
       )}
-    </section>
+    </div>
   );
-}
-
-function Step({ n }) {
-  return <span className="shrink-0 w-6 h-6 rounded-full bg-peach-500 text-white text-xs font-bold grid place-items-center">{n}</span>;
 }
