@@ -66,12 +66,48 @@ const PET = [
   e('zoomies', '우다다', '우다다다!', '💨', 'running wildly with a crazy happy face, dust clouds and motion lines', 'running wildly with a crazy happy face, ears back, dust clouds and motion lines', 3),
 ];
 
+// 링크클린(청소 전문 업체) 손님 응대용
+const CLEAN_OUTFIT = 'wearing a neat cleaning-staff apron and pastel rubber gloves';
+const LINKCLEAN = [
+  e('lc_booking', '예약 감사합니다', '예약 감사합니다', '📅', `${CLEAN_OUTFIT}, bowing politely while holding a small calendar with one date circled, grateful smile`, `${CLEAN_OUTFIT}, bowing politely holding a small calendar with one date circled, grateful smile`, 1),
+  e('lc_go', '출동합니다!', '출동합니다!', '🧹', `${CLEAN_OUTFIT}, carrying a bucket full of cleaning supplies in one hand and a mop in the other, confident salute-ready grin`, null, 2),
+  e('lc_arrive', '현장 도착', '도착했습니다!', '🚐', `${CLEAN_OUTFIT}, waving cheerfully next to a small cleaning kit box, just arrived`, null, 0),
+  e('lc_working', '열심히 청소 중', '열심히 청소 중', '🧽', `${CLEAN_OUTFIT}, scrubbing hard with a sponge, soap bubbles flying, focused face with a sweat drop`, null, 6),
+  e('lc_sparkle', '반짝반짝', '반짝반짝', '✨', `${CLEAN_OUTFIT}, polishing a shiny surface with a cloth, big sparkles and star glints everywhere, proud smile`, null, 8),
+  e('lc_done', '청소 완료!', '청소 완료!', '✅', `${CLEAN_OUTFIT}, giving a big thumbs up, a large green check mark and sparkles beside, satisfied smile`, null, 11),
+  e('lc_mold', '곰팡이 퇴치', '곰팡이 퇴치!', '🦠', `${CLEAN_OUTFIT}, spraying a spray bottle at a tiny cute gray mold monster that is fleeing, heroic pose`, null, 2),
+  e('lc_dust', '먼지 OUT', '먼지 싹!', '🌪️', `${CLEAN_OUTFIT}, using a vacuum cleaner that sucks up swirling dust clouds, determined face`, null, 3),
+  e('lc_check', '꼼꼼 체크', '꼼꼼하게 확인!', '🔍', `${CLEAN_OUTFIT}, inspecting closely with a big magnifying glass, one eye enlarged, serious professional face`, null, 7),
+  e('lc_movein', '입주 축하해요', '새집 입주 축하해요', '🏠', `${CLEAN_OUTFIT}, holding a small house-shaped balloon, confetti, warm congratulating smile`, null, 8),
+  e('lc_thanks', '수고하셨습니다', '오늘도 수고하셨습니다', '😌', `${CLEAN_OUTFIT}, wiping sweat from the forehead with a small towel, relieved satisfied smile`, null, 1),
+  e('lc_again', '또 불러주세요', '또 불러주세요!', '📞', `${CLEAN_OUTFIT}, holding a phone to the ear with a wink, a small heart floating`, null, 2),
+];
+
+// 크리머스(케이크·디저트 가게) 손님 응대용
+const BAKER = 'wearing a cute baker apron and a small white baker hat';
+const CREAMUS = [
+  e('cr_welcome', '어서 오세요', '어서 오세요!', '🧁', `${BAKER}, welcoming with both hands open and a bright smile`, null, 0),
+  e('cr_cake_ready', '케이크 나왔어요', '케이크 나왔어요!', '🎂', `${BAKER}, proudly presenting a beautiful whipped-cream strawberry cake on a cake stand, sparkles`, null, 11),
+  e('cr_sweet', '오늘도 달달하게', '오늘도 달달하게♥', '🍰', `${BAKER}, holding a cupcake with cream swirl, heart-shaped eyes, small floating hearts`, null, 1),
+  e('cr_order', '주문 감사합니다', '주문 감사합니다', '🎀', `${BAKER}, bowing politely while holding a cake box tied with a pink ribbon`, null, 1),
+  e('cr_cream', '생크림 듬뿍', '생크림 듬뿍!', '🍦', `${BAKER}, squeezing a piping bag to decorate a cake with fluffy cream swirls, focused happy face`, null, 2),
+  e('cr_fresh', '갓 구웠어요', '갓 구웠어요', '🥐', `${BAKER}, holding a tray of freshly baked pastries with warm steam rising, delighted face`, null, 8),
+  e('cr_enjoy', '맛있게 드세요', '맛있게 드세요', '🍽️', `${BAKER}, offering a slice of cake on a small plate with a fork, warm smile`, null, 11),
+  e('cr_birthday', '생일 축하해요', '생일 축하해요!', '🕯️', `${BAKER}, holding a birthday cake with lit candles, party popper confetti`, null, 8),
+  e('cr_pickup', '픽업 완료', '픽업 완료!', '🛍️', `${BAKER}, handing over a ribbon-tied cake box with both hands, thumbs up`, null, 11),
+  e('cr_new', '신메뉴 출시', 'NEW!', '🆕', `${BAKER}, presenting a new colorful dessert with sparkles and a small hand-lettered "NEW!"`, null, 8),
+  e('cr_seaside', '바다 보며 디저트', '바다 보며 한입', '🌊', `${BAKER}, happily eating a dessert with small cartoon sea waves and a seagull beside`, null, 1),
+  e('cr_diet', '다이어트는 내일', '다이어트는 내일부터…', '😋', `${BAKER}, guiltily eating a big slice of cake with cream on the cheek, sneaky sideways glance`, null, 4),
+];
+
 export const LIBRARY_GROUPS = [
   { id: 'basic', label: '기본', items: BASIC },
   { id: 'office', label: '직장인', items: OFFICE },
   { id: 'love', label: '연애·애정', items: LOVE },
   { id: 'daily', label: '인사·일상', items: DAILY },
   { id: 'pet', label: '반려동물 일상', items: PET },
+  { id: 'linkclean', label: '링크클린', items: LINKCLEAN },
+  { id: 'creamus', label: '크리머스', items: CREAMUS },
 ];
 
 const ALL = Object.fromEntries(LIBRARY_GROUPS.flatMap((g) => g.items).map((x) => [x.id, x]));
@@ -83,6 +119,8 @@ export const PACKS = [
   { id: 'love', label: '연애·애정', emoji: '💕', ids: ids('miss_you kiss finger_heart shy jealous hug_me love good_night good_morning sad angry ok') },
   { id: 'daily', label: '인사·일상', emoji: '🌼', ids: ids('hello bye flowers sorry hungry yummy dance surprised bored clap lol thinking') },
   { id: 'pet', label: '반려동물 일상', emoji: '🐾', ids: ids('box back_view stretch roll treat laptop knead peek subway im_ok sleep cool') },
+  { id: 'linkclean', label: '링크클린 손님용', emoji: '🧽', ids: LINKCLEAN.map((x) => x.id) },
+  { id: 'creamus', label: '크리머스 손님용', emoji: '🍰', ids: CREAMUS.map((x) => x.id) },
 ];
 
 /** 직접 입력한 상황으로 표정 만들기 (한국어 그대로 AI에 전달 — Gemini는 한국어를 이해함) */
