@@ -8,7 +8,7 @@ import Gallery from './components/Gallery.jsx';
 import StickerModal from './components/StickerModal.jsx';
 import { CATEGORIES, STYLES, EMOTIONS, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
-import { prepareUpload, processSticker, dataUrlToRef, sliceSheet, pieceToSticker, composeSheet } from './lib/imageTools.js';
+import { prepareUpload, processSticker, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet } from './lib/imageTools.js';
 import { downloadDataUrl, downloadZip, shareImages } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
@@ -61,6 +61,8 @@ export default function App() {
   const abortRef = useRef(null);
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
   const optsRef = useRef({ category, style }); // 마지막 생성에 쓴 옵션 (개별 재생성용)
+  const fatalRef = useRef(null); // 이번 실행에서 난 치명적 오류
+  const wakeRef = useRef(null);
 
   const hasKey = PROVIDERS[settings.provider]?.noKey
     || (settings.provider === 'gemini' ? !!settings.geminiKey : !!settings.openaiKey);
@@ -74,6 +76,15 @@ export default function App() {
     clearTimeout(notify.t);
     notify.t = setTimeout(() => setToast(null), 2600);
   }, []);
+
+  // 생성 중에는 화면이 꺼지지 않게 (화면 꺼지면 요청이 끊김)
+  useEffect(() => {
+    let cancelled = false;
+    if (busy && 'wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').then((l) => { if (cancelled) l.release(); else wakeRef.current = l; }).catch(() => {});
+    }
+    return () => { cancelled = true; wakeRef.current?.release?.().catch?.(() => {}); wakeRef.current = null; };
+  }, [busy]);
 
   const patch = (i, obj) => setStickers((arr) => arr.map((s, k) => (k === i ? { ...s, ...obj } : s)));
 
@@ -95,14 +106,21 @@ export default function App() {
     });
     patch(i, { status: 'loading', error: null });
     try {
-      const raw = await generateImage({ settings, refs, prompt, shape: 'square', signal, meta: { ...opts, index: i } });
+      const raw = await generateImage({
+        settings, refs, prompt, shape: 'square', signal, meta: { ...opts, index: i },
+        onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
+      });
       const url = await processSticker(raw, { postprocess: settings.postprocess });
       patch(i, { status: 'done', url });
       return raw;
     } catch (e) {
       if (e.name === 'AbortError') { patch(i, { status: 'idle' }); throw e; }
       patch(i, { status: 'error', error: e.short || '생성 실패', detail: e.message });
-      if (e.fatal) throw e; // 나머지 요청을 보내지 않고 바로 멈춤
+      if (e.fatal) { // 나머지 요청도 즉시 중단
+        fatalRef.current = e;
+        abortRef.current?.abort();
+        throw e;
+      }
       return null;
     }
   };
@@ -118,6 +136,7 @@ export default function App() {
     const opts = optsRef.current;
     setStickers(emptyStickers());
     setFatal(null);
+    fatalRef.current = null;
     setBusy(true);
 
     try {
@@ -132,8 +151,9 @@ export default function App() {
           shape: 'sheet',
           signal: ctrl.signal,
           meta: opts,
+          onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
         });
-        anchorRef.current = dataUrlToRef(raw);
+        anchorRef.current = await toJpegRef(raw);
         setStage('스티커 오려내는 중');
         const pieces = await sliceSheet(raw, 3, 4);
         setStickers((arr) => arr.map((s, i) => ({ ...s, status: 'done', url: pieceToSticker(pieces[i], settings.postprocess) })));
@@ -142,25 +162,34 @@ export default function App() {
         setStage('캐릭터 디자인 중');
         let raw0 = await generateOne(0, { signal: ctrl.signal, opts });
         if (!raw0) raw0 = await generateOne(0, { signal: ctrl.signal, opts });
-        if (raw0) anchorRef.current = dataUrlToRef(raw0);
+        if (raw0) anchorRef.current = await toJpegRef(raw0);
 
-        // 2) 나머지 11종을 기준 캐릭터와 함께 3개씩 동시 생성
+        // 2) 나머지 11종을 기준 캐릭터와 함께 2개씩 동시 생성 (요청 몰림 방지)
         setStage('표정 만드는 중');
         const rest = EMOTIONS.map((_, i) => i).slice(1);
-        await runPool(rest, 3, (i) => generateOne(i, { signal: ctrl.signal, opts }));
+        await runPool(rest, settings.provider === 'demo' ? 3 : 2, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
+        if (ctrl.signal.aborted) throw fatalRef.current || new DOMException('Aborted', 'AbortError');
       }
       setStage('완성!');
-      notify('이모티콘 팩이 완성됐어요 🎉');
-    } catch (e) {
+      setStickers((arr) => {
+        const failed = arr.filter((x) => x.status === 'error').length;
+        notify(failed ? `${12 - failed}장 완성, ${failed}장은 실패했어요. [실패한 것만 다시]를 눌러주세요.` : '이모티콘 팩이 완성됐어요 🎉');
+        return arr;
+      });
+    } catch (err) {
+      const e = fatalRef.current || err;
       if (e.name === 'AbortError') {
         notify('생성을 중단했어요.');
         setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'idle' } : s)));
       } else {
-        setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'error', error: e.short || '생성 실패', detail: e.message } : s)));
         if (e.fatal) {
+          // 이미 완성된 스티커는 그대로 두고, 진행 중이던 칸만 비움
           setFatal({ message: e.message, help: e.help, detail: e.detail });
-          setStickers((arr) => arr.map((s) => (s.status === 'error' ? s : { ...s, status: 'idle' })));
-        } else notify(e.message);
+          setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'idle' } : s)));
+        } else {
+          setStickers((arr) => arr.map((s) => (s.status === 'loading' ? { ...s, status: 'error', error: e.short || '생성 실패', detail: e.message } : s)));
+          notify(e.message);
+        }
       }
     } finally {
       setBusy(false);
@@ -185,7 +214,7 @@ export default function App() {
     setStage(`${EMOTIONS[i].label} 다시 그리는 중`);
     try {
       const raw = await generateOne(i, { signal: ctrl.signal, opts: optsRef.current });
-      if (raw && !anchorRef.current) anchorRef.current = dataUrlToRef(raw);
+      if (raw && !anchorRef.current) anchorRef.current = await toJpegRef(raw);
       if (raw) setFatal(null);
     } catch (e) {
       if (e?.fatal) setFatal({ message: e.message, help: e.help, detail: e.detail });
@@ -193,6 +222,32 @@ export default function App() {
     setBusy(false);
     abortRef.current = null;
   };
+
+  /** 실패한 칸만 모아서 다시 생성 */
+  const retryFailed = async () => {
+    if (busy) return;
+    const idx = stickers.map((x, i) => (x.status === 'error' ? i : -1)).filter((i) => i >= 0);
+    if (!idx.length) return;
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    fatalRef.current = null;
+    setFatal(null);
+    setBusy(true);
+    setStage('실패한 것 다시 만드는 중');
+    try {
+      if (!anchorRef.current && idx.includes(0)) {
+        const raw0 = await generateOne(0, { signal: ctrl.signal, opts: optsRef.current });
+        if (raw0) anchorRef.current = await toJpegRef(raw0);
+      }
+      await runPool(idx.filter((i) => i !== 0 || !anchorRef.current), 2, (i) => generateOne(i, { signal: ctrl.signal, opts: optsRef.current }), ctrl.signal);
+    } catch { /* 아래에서 처리 */ }
+    const fe = fatalRef.current;
+    if (fe) setFatal({ message: fe.message, help: fe.help, detail: fe.detail });
+    setStickers((arr) => arr.map((x) => (x.status === 'loading' ? { ...x, status: 'idle' } : x)));
+    setBusy(false);
+    abortRef.current = null;
+  };
+  const failedCount = stickers.filter((x) => x.status === 'error').length;
 
   // ── 내보내기 ─────────────────────────────
   const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${s.id}.png`;
@@ -330,6 +385,11 @@ export default function App() {
               <h2 className="font-display text-xl">내 이모티콘 팩</h2>
               <span className="text-xs font-bold text-cocoa-400">{doneCount}/12 완성</span>
             </div>
+            {failedCount > 0 && !busy && (
+              <button onClick={retryFailed} className="btn-ghost w-full mb-3 !border-2 !border-peach-300">
+                실패한 것만 다시 ({failedCount}장)
+              </button>
+            )}
             <div className="rounded-2xl bg-cream-100 p-3">
               <Gallery stickers={stickers} onOpen={setViewIdx} onRetry={retry} busy={busy} />
             </div>

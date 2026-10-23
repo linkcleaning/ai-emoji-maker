@@ -1,6 +1,6 @@
 // AI 이모티콘 메이커 - Service Worker
 // 앱 셸만 캐시하고, AI API 호출은 절대 캐시하지 않습니다.
-const CACHE = 'emoji-maker-v1';
+const CACHE = 'emoji-maker-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
