@@ -79,6 +79,7 @@ export default function App() {
   const [me, setMe] = useState(null);                // 내 이용 코드·남은 무료·충전
   const [limit, setLimit] = useState(null);          // 한도 도달 안내
   const [showAdmin, setShowAdmin] = useState(false);
+  const [serverProblem, setServerProblem] = useState(null); // 서버는 있는데 설정 미완료
   const packTokenRef = useRef(null);
   const [starting, setStarting] = useState(false);
 
@@ -113,8 +114,10 @@ export default function App() {
   // 서버에서 열렸는지 확인 → 무료 이용 모드로 전환
   useEffect(() => {
     let alive = true;
-    fetchServerConfig().then(async (cfg) => {
+    fetchServerConfig().then(async (res) => {
+      let cfg = res;
       if (!alive) return;
+      if (cfg && cfg.problem) { setServerProblem(cfg.problem); cfg = null; }
       setServerCfg(cfg);
       if (cfg) {
         setSettings((s) => (s.provider === 'gemini' && !s.geminiKey) || s.provider === 'demo' && !IS_PREVIEW ? { ...s, provider: 'server' } : s);
@@ -383,6 +386,16 @@ export default function App() {
               <span className="block text-xs text-cocoa-400">Gemini 또는 OpenAI 키 — 내 기기에만 저장돼요</span>
             </span>
           </button>
+        )}
+
+        {serverProblem === 'not_configured' && (
+          <div className="rounded-3xl border-2 border-peach-300 bg-white p-4 text-sm leading-relaxed" role="alert">
+            <p className="font-bold mb-1">⚙️ 서버 설정이 아직 안 끝났어요</p>
+            <p className="text-xs text-cocoa-600 break-keep">
+              Cloudflare → ai-emoji-maker → Settings → Variables and Secrets 에 <b>GEMINI_API_KEY</b>(Secret)가 없어요.
+              넣고 배포하면 이 안내가 사라지고 무료 이용이 시작돼요. (그 전까지는 각자 API 키로만 쓸 수 있어요)
+            </p>
+          </div>
         )}
 
         {isDemo && (

@@ -35,11 +35,21 @@ async function call(path, { method = 'GET', body, headers = {} } = {}) {
   return { ok: res.ok, status: res.status, data: data || {} };
 }
 
-/** 서버 모드인지 확인. 서버가 없으면 null */
+/**
+ * 서버 모드인지 확인
+ *  - 정상: { server: true, ... }
+ *  - 서버는 있는데 비밀 값(GEMINI_API_KEY)이 없음: { server: false, problem: 'not_configured' }
+ *  - 서버 없음(깃허브 페이지 등): null
+ */
 export async function fetchServerConfig() {
   try {
-    const r = await call('/api/config');
-    return r.ok && r.data.server ? r.data : null;
+    const res = await fetch('/api/config', { cache: 'no-store' });
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('application/json')) return null; // 앱 화면(HTML)이 돌아옴 = 서버 없음
+    const data = await res.json();
+    if (res.ok && data.server) return data;
+    if (data.error === 'not_configured') return { server: false, problem: 'not_configured' };
+    return null;
   } catch {
     return null;
   }
