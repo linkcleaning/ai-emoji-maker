@@ -1,6 +1,6 @@
 // AI 이모티콘 메이커 - Service Worker
 // 앱 셸만 캐시하고, AI API 호출은 절대 캐시하지 않습니다.
-const CACHE = 'emoji-maker-v2';
+const CACHE = 'emoji-maker-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -19,6 +19,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (url.pathname.startsWith('/api/')) return; // 서버 API는 캐시하지 않음
   // 외부 API(Gemini/OpenAI)는 통과
   if (url.origin !== self.location.origin && !url.hostname.includes('fonts.')) return;
 

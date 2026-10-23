@@ -3,6 +3,22 @@
 사진 한 장(인물 · 고양이 · 강아지)으로 **12종 감정 이모티콘 스티커 팩**을 만드는 모바일 PWA.
 React 18 + Vite + Tailwind CSS + Lucide + JSZip.
 
+## 두 가지 운영 방식
+| 주소 | 방식 |
+|---|---|
+| **Cloudflare 주소** (`ai-emoji-maker.….workers.dev`) | **무료 이용 모드**: 사장님 Gemini 키를 서버에 숨겨두고 손님은 키 없이 사용. 1인 하루 2팩 무료, 추가는 입금 → 관리자가 이용 코드에 충전 |
+| 깃허브 페이지 (`linkcleaning.github.io/ai-emoji-maker`) | 각자 자기 API 키를 넣어 사용 |
+
+### Cloudflare 배포 (무료 이용 모드)
+1. Cloudflare 대시보드 → Workers & Pages → 만들기 → **Git 저장소 가져오기** → `linkcleaning/ai-emoji-maker`
+2. 프로젝트 이름 `ai-emoji-maker`, 빌드 명령 `npm run build`, 배포 명령 `npx wrangler deploy`
+3. 배포 후 → 설정 → **변수 및 비밀** → 유형 '비밀'로 2개 추가
+   - `GEMINI_API_KEY` : 결제 연결된(link 프로젝트) Gemini 키
+   - `ADMIN_PASSWORD` : 관리자 비밀번호
+4. 주소 뒤에 `#admin` 을 붙이거나 ⚙️ → 관리자 → 입금 안내·한도 설정
+
+서버 코드는 `worker/` (사용량 기록은 Durable Object SQLite, 별도 DB 생성 불필요).
+
 ## 실행
 ```bash
 npm install

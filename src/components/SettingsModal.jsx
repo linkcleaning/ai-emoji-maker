@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { X, KeyRound, Eye, EyeOff, ExternalLink, Trash2 } from 'lucide-react';
 import { PROVIDERS } from '../lib/api.js';
 
-export default function SettingsModal({ settings, onSave, onClose }) {
+export default function SettingsModal({ settings, onSave, onClose, serverInfo, onAdmin }) {
   const [s, setS] = useState(settings);
   const [show, setShow] = useState(false);
   const set = (k, v) => setS((p) => ({ ...p, [k]: v }));
   const prov = PROVIDERS[s.provider];
   const keyField = s.provider === 'gemini' ? 'geminiKey' : 'openaiKey';
-  const modelField = s.provider === 'gemini' ? 'geminiModel' : 'openaiModel';
+  const modelField = s.provider === 'gemini' ? 'geminiModel' : s.provider === 'server' ? 'serverModel' : 'openaiModel';
+  const SHORT = { server: '무료 이용', demo: '데모', gemini: 'Gemini 키', openai: 'OpenAI 키' };
 
   return (
     <div className="fixed inset-0 z-50 bg-cocoa-800/40 grid place-items-end sm:place-items-center" onClick={onClose}>
@@ -22,15 +23,25 @@ export default function SettingsModal({ settings, onSave, onClose }) {
         </div>
 
         <span className="label">AI 엔진</span>
-        <div className="seg mb-4">
-          {Object.entries(PROVIDERS).map(([id, p]) => (
-            <button key={id} className="seg-btn" aria-pressed={s.provider === id} onClick={() => set('provider', id)}>
-              {p.label}
+        <div className="seg mb-4 flex-wrap">
+          {Object.entries(PROVIDERS).filter(([, p]) => !p.serverOnly || serverInfo).map(([id]) => (
+            <button key={id} className="seg-btn min-w-[44%] sm:min-w-0" aria-pressed={s.provider === id} onClick={() => set('provider', id)}>
+              {SHORT[id]}
             </button>
           ))}
         </div>
 
-        {prov.noKey ? (
+        {s.provider === 'server' ? (
+          <>
+            <p className="text-xs text-cocoa-600 bg-cream-50 rounded-xl p-3 mb-4 leading-relaxed break-keep">
+              API 키 없이 바로 만들어요. <b>하루 {serverInfo?.freePerDay ?? 2}팩 무료</b>이고, 더 만들려면 입금 후 이용 코드를 알려주시면 풀어드려요.
+            </p>
+            <label className="label" htmlFor="model">모델</label>
+            <select id="model" className="input mb-4" value={s.serverModel || prov.models[0].id} onChange={(e) => set('serverModel', e.target.value)}>
+              {prov.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </>
+        ) : prov.noKey ? (
           <p className="text-xs text-cocoa-600 bg-cream-50 rounded-xl p-3 mb-4">데모 모드는 API 키 없이 예시 캐릭터로 화면을 체험해요. 실제 사진으로 만들려면 Gemini 또는 OpenAI를 고르세요.</p>
         ) : (<>
         <label className="label" htmlFor="apikey">{prov.label} API Key</label>
@@ -101,6 +112,9 @@ export default function SettingsModal({ settings, onSave, onClose }) {
           </button>
           <button className="btn-primary flex-1" onClick={() => onSave(s)}>저장</button>
         </div>
+        {serverInfo && (
+          <button onClick={onAdmin} className="mt-4 w-full text-center text-xs text-cocoa-400 underline underline-offset-2">관리자</button>
+        )}
       </div>
     </div>
   );

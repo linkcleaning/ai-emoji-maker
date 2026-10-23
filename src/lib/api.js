@@ -4,6 +4,17 @@
 import { demoSticker, demoSheet } from './demo.js';
 
 export const PROVIDERS = {
+  server: {
+    label: '무료 이용',
+    models: [
+      { id: 'gemini-3.1-flash-image', label: '나노바나나 2 (추천)' },
+      { id: 'gemini-3.1-flash-lite-image', label: '나노바나나 2 라이트 (빠름)' },
+    ],
+    keyUrl: '',
+    bgMode: 'chroma',
+    noKey: true,
+    serverOnly: true, // 서버(Cloudflare)에서 열었을 때만 보임
+  },
   demo: {
     label: '데모 체험',
     models: [{ id: 'demo', label: '데모 (API 없이 미리보기)' }],
@@ -57,6 +68,9 @@ async function readError(res) {
   const retryAfter = parseRetryDelay(json, res);
   const billingHelp = { label: 'AI Studio에서 결제 연결하기', url: 'https://aistudio.google.com/usage' };
 
+  if (res.status === 403 && raw === 'pack_token') {
+    return makeError('이번 팩의 AI 사용 횟수를 다 썼거나 6시간이 지났어요. [새로 만들기]로 새 팩을 시작해 주세요.', { fatal: true, short: '팩 만료', detail, status: 403 });
+  }
   if (res.status === 429) {
     // 무료 등급(할당량 0) 또는 결제 한도 초과 → 다시 해도 안 됨
     // ※ 분당 제한 메시지에도 'quota', 'billing details'라는 말이 들어가므로 그 단어만으로는 판단하지 않음
@@ -109,15 +123,17 @@ async function fetchWithTimeout(url, opts, signal, ms = 150000) {
  * Gemini 이미지 생성
  * @param refs [{mime, base64}] 참조 이미지(원본 사진, 기준 캐릭터)
  */
-async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', signal }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', signal, server }) {
+  // server: { token } → 우리 서버(/api/generate)를 거쳐 사장님 키로 호출
+  const url = server ? '/api/generate' : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const authHeaders = server ? { 'x-pack-token': server.token, 'x-model': model } : { 'x-goog-api-key': apiKey };
   const parts = [
     ...refs.map((r) => ({ inlineData: { mimeType: r.mime, data: r.base64 } })),
     { text: prompt },
   ];
   const res = await fetchWithTimeout(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({
       contents: [{ role: 'user', parts }],
       generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } },
@@ -208,6 +224,13 @@ async function generateOnce({ settings, refs, prompt, shape = 'square', signal, 
   if (p === 'demo') {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     return shape === 'sheet' ? demoSheet(meta) : demoSticker(meta);
+  }
+  if (p === 'server') {
+    if (!settings.packToken) throw makeError('[새로 만들기]로 새 팩을 시작해 주세요.', { fatal: true, short: '팩 없음' });
+    return generateGemini({
+      model: settings.serverModel || PROVIDERS.server.models[0].id, refs, prompt,
+      aspect: shape === 'sheet' ? '3:4' : '1:1', signal, server: { token: settings.packToken },
+    });
   }
   if (p === 'gemini') {
     if (!settings.geminiKey) throw makeError('설정에서 Gemini API 키를 입력해 주세요.', { fatal: true, short: '키 없음' });

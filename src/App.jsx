@@ -9,6 +9,9 @@ import StickerModal from './components/StickerModal.jsx';
 import { CATEGORIES, STYLES, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
 import { packSet, serializeSet, deserializeSet } from './lib/expressions.js';
 import ExpressionPicker, { ExpressionBar } from './components/ExpressionPicker.jsx';
+import LimitModal from './components/LimitModal.jsx';
+import AdminModal from './components/AdminModal.jsx';
+import { fetchServerConfig, fetchMe, startPack } from './lib/server.js';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, downloadZip, shareImages, safeName } from './lib/share.js';
@@ -71,6 +74,13 @@ export default function App() {
   const [viewIdx, setViewIdx] = useState(null);
   const [toast, setToast] = useState(null);
   const [fatal, setFatal] = useState(null); // 키·할당량·모델 문제처럼 다시 해도 안 되는 오류
+  // 서버(무료 이용) 모드
+  const [serverCfg, setServerCfg] = useState(null); // 서버에서 열었으면 설정, 아니면 null
+  const [me, setMe] = useState(null);                // 내 이용 코드·남은 무료·충전
+  const [limit, setLimit] = useState(null);          // 한도 도달 안내
+  const [showAdmin, setShowAdmin] = useState(false);
+  const packTokenRef = useRef(null);
+  const [starting, setStarting] = useState(false);
 
   const abortRef = useRef(null);
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
@@ -100,6 +110,25 @@ export default function App() {
     return () => { cancelled = true; wakeRef.current?.release?.().catch?.(() => {}); wakeRef.current = null; };
   }, [busy]);
 
+  // 서버에서 열렸는지 확인 → 무료 이용 모드로 전환
+  useEffect(() => {
+    let alive = true;
+    fetchServerConfig().then(async (cfg) => {
+      if (!alive) return;
+      setServerCfg(cfg);
+      if (cfg) {
+        setSettings((s) => (s.provider === 'gemini' && !s.geminiKey) || s.provider === 'demo' && !IS_PREVIEW ? { ...s, provider: 'server' } : s);
+        fetchMe().then((m) => alive && m && setMe(m)).catch(() => {});
+        if (location.hash === '#admin') setShowAdmin(true);
+      } else {
+        setSettings((s) => (s.provider === 'server' ? { ...s, provider: 'gemini' } : s));
+      }
+    });
+    return () => { alive = false; };
+  }, []);
+  const isServer = settings.provider === 'server';
+  const runSettings = () => ({ ...settings, packToken: packTokenRef.current });
+
   const patch = (i, obj) => setStickers((arr) => arr.map((s, k) => (k === i ? { ...s, ...obj } : s)));
 
   const onFile = async (file) => {
@@ -121,7 +150,7 @@ export default function App() {
     patch(i, { status: 'loading', error: null });
     try {
       const gen = (fixFrame) => generateImage({
-        settings, refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: opts.set[i].demo ?? i },
+        settings: runSettings(), refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: opts.set[i].demo ?? i },
         onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
       });
       let raw = await gen(false);
@@ -153,6 +182,18 @@ export default function App() {
     if (!photo && !isDemo) return notify('먼저 사진을 올려주세요.');
     if (!hasKey) { setShowSettings(true); return notify('API 키를 먼저 입력해 주세요.'); }
 
+    // 무료 이용: 서버에서 1팩 차감하고 이번 팩 전용 토큰을 받음 (한도면 입금 안내)
+    if (isServer) {
+      if (starting) return;
+      setStarting(true);
+      let r;
+      try { r = await startPack(); } catch (e) { setStarting(false); return notify(e.message); }
+      setStarting(false);
+      setMe(r);
+      if (!r.ok) { setLimit(r); return; }
+      packTokenRef.current = r.token;
+    }
+
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     anchorRef.current = null;
@@ -169,7 +210,7 @@ export default function App() {
         setStickers((arr) => arr.map((s) => ({ ...s, status: 'loading' })));
         const bgMode = settings.postprocess ? PROVIDERS[settings.provider].bgMode : 'baked';
         const raw = await generateImage({
-          settings,
+          settings: runSettings(),
           refs: photo ? [{ mime: photo.mime, base64: photo.base64 }] : [],
           prompt: buildSheetPrompt({ ...opts, bgMode, emotions: opts.set }),
           shape: 'sheet',
@@ -231,6 +272,7 @@ export default function App() {
 
   const retry = async (i) => {
     if ((!photo && !isDemo) || busy) return;
+    if (isServer && !packTokenRef.current) return notify('[새로 만들기]로 새 팩을 시작해 주세요.');
     if (!hasKey) return setShowSettings(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -250,6 +292,7 @@ export default function App() {
   /** 실패한 칸만 모아서 다시 생성 */
   const retryFailed = async () => {
     if (busy) return;
+    if (isServer && !packTokenRef.current) return notify('[새로 만들기]로 새 팩을 시작해 주세요.');
     const idx = stickers.map((x, i) => (x.status === 'error' ? i : -1)).filter((i) => i >= 0);
     if (!idx.length) return;
     const ctrl = new AbortController();
@@ -395,11 +438,13 @@ export default function App() {
             onChange={(set) => { setExpSet(set); storeSet(set); if (!hasResults) setStickers(emptyStickers(set)); }}
           />
 
-          <button onClick={start} disabled={busy || (!photo && !isDemo)} className="btn-primary w-full !py-4 !text-base">
+          <button onClick={start} disabled={busy || starting || (!photo && !isDemo)} className="btn-primary w-full !py-4 !text-base">
             <Wand2 size={19} /> {hasResults ? '새로 만들기' : '이모티콘 12종 만들기'}
           </button>
           <p className="text-[11px] text-center text-cocoa-400 -mt-2">
-            {PROVIDERS[settings.provider].label}{isDemo && !photo ? ' · 사진 없이도 체험 가능' : ''} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}
+            {isServer && me
+              ? <>오늘 무료 <b className="text-cocoa-600">{me.freeLeft}/{me.freePerDay}팩</b> 남음{me.credit > 0 && <> · 충전 <b className="text-cocoa-600">{me.credit}팩</b></>} · 내 코드 <span className="font-mono">{me.code}</span></>
+              : <>{PROVIDERS[settings.provider].label}{isDemo && !photo ? ' · 사진 없이도 체험 가능' : ''} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}</>}
           </p>
         </section>
 
@@ -487,6 +532,22 @@ export default function App() {
         />
       )}
 
+      {limit && (
+        <LimitModal
+          info={limit}
+          onClose={() => setLimit(null)}
+          onRecheck={async () => {
+            const m = await fetchMe().catch(() => null);
+            if (!m) return notify('서버에 연결하지 못했어요.');
+            setMe(m);
+            if (m.credit > 0 || m.freeLeft > 0) { setLimit(null); notify(m.credit > 0 ? `충전 확인! ${m.credit}팩 사용할 수 있어요.` : '다시 만들 수 있어요.'); }
+            else notify('아직 충전 전이에요. 입금 확인 후 다시 눌러주세요.');
+          }}
+        />
+      )}
+
+      {showAdmin && <AdminModal onClose={() => { setShowAdmin(false); if (location.hash === '#admin') history.replaceState(null, '', location.pathname); }} notify={notify} />}
+
       {showPicker && (
         <ExpressionPicker
           set={expSet}
@@ -498,6 +559,8 @@ export default function App() {
       {showSettings && (
         <SettingsModal
           settings={settings}
+          serverInfo={serverCfg}
+          onAdmin={() => { setShowSettings(false); setShowAdmin(true); }}
           onClose={() => setShowSettings(false)}
           onSave={(s) => { setSettings(s); saveSettings(s); setShowSettings(false); notify('설정을 저장했어요.'); }}
         />
