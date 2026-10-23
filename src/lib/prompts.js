@@ -119,11 +119,18 @@ function backgroundText(mode) {
   return 'Die-cut sticker look: thick clean white border following the silhouette, soft subtle drop shadow, on a plain light beige background.';
 }
 
+// 몸 구조·옷 규칙 (머리 두 개, 손 겹침, 옷에 엉뚱한 글자 방지)
+const ANATOMY =
+  'ANATOMY: the character appears only once, with exactly one head, one face, two arms and two hands — never duplicate heads, faces or bodies, ' +
+  'no extra limbs, no merged or overlapping copies of the character. The face stays clearly visible (except an explicit back view). ' +
+  'Clothing is plain with no logos, brand names, letters or text printed on it.';
+
 const COMMON =
   'Exactly ONE character, centered, the whole character and all props fully inside the image with comfortable margin, ' +
   'no floating bars, lines, frames, banners, buttons, UI elements or empty speech bubbles (only the props described), ' +
   'nothing cropped. Bold readable silhouette that works at small messenger-sticker size. No extra text except the symbols described, ' +
-  'no watermark, no signature, no frame, no panel borders.';
+  'no watermark, no signature, no frame, no panel borders. ' +
+  ANATOMY;
 
 export function buildStickerPrompt({ category, style, emotion, bgMode, hasAnchor, fixFrame }) {
   const pose = category === 'person' ? emotion.person : emotion.pet;
@@ -154,6 +161,7 @@ export function buildSheetPrompt({ category, style, bgMode, emotions = EMOTIONS 
     'Order left-to-right, top-to-bottom:',
     list,
     'No grid lines, no numbers, no captions, no watermark.',
+    ANATOMY + ' This applies to each of the 12 stickers separately: each cell contains the character exactly once.',
     backgroundText(bgMode),
     'High quality, 4k detail.',
   ].join('\n');

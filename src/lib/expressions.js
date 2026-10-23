@@ -58,10 +58,10 @@ const PET = [
   e('roll', '뒹굴뒹굴', '뒹굴~', '🛌', 'rolling on the back happily with arms and legs up', 'lying belly-up with all four paws in the air, happy face, showing paw pads', 9),
   e('treat', '간식 줘', '간식 주세요', '🍖', 'pleading with huge sparkly eyes, hands together, a small treat floating nearby', 'begging on hind legs with huge sparkly eyes, a small treat floating nearby', 1),
   e('laptop', '재택근무', '일하는 중', '💻', 'wearing round glasses, typing on a laptop with a serious face', 'wearing round glasses, typing on a laptop with a serious face', 6),
-  e('knead', '꾹꾹이', '꾹꾹', '🐾', 'pressing a fluffy blanket rhythmically with both hands, blissful closed eyes', 'kneading a fluffy blanket with front paws, blissful closed eyes', 1),
+  e('knead', '꾹꾹이', '꾹꾹', '🐾', 'hugging a fluffy folded blanket to the chest with both arms, cheek pressed into it, blissful closed eyes', 'kneading a fluffy blanket with front paws, blissful closed eyes', 1),
   e('peek', '빼꼼', '빼꼼', '👀', 'peeking out from behind a wall edge, only half the face visible, curious eyes', 'peeking out from behind a wall edge, only half the face and one paw visible, curious eyes', 7),
   e('subway', '출근하는 집사', '출근…', '🚇', 'hanging from a subway hand strap with one hand, tired face, ID badge, briefcase', 'body stretched long hanging from a subway hand strap with one paw, tired face, ID badge, tiny briefcase', 6),
-  e('im_ok', "I'm OK!", "I'm OK!", '🫠', 'face down collapsed on a laptop keyboard with one hand raised in a thumbs up, small hand-lettered "I\'m OK!"', 'face down collapsed on a laptop keyboard with one paw raised, small hand-lettered "I\'m OK!"', 6),
+  e('im_ok', "I'm OK!", "I'm OK!", '🫠', 'slumped over a laptop with one cheek resting on the keyboard, face turned toward the viewer with tired half-closed eyes and a weak smile, one hand raised in a shaky thumbs up, small hand-lettered "I\'m OK!"', 'slumped over a laptop with the chin resting on the keyboard, face toward the viewer with tired half-closed eyes, one paw raised, small hand-lettered "I\'m OK!"', 6),
   e('walk', '산책 가자', '산책 가자!', '🦮', 'holding a leash excitedly, bouncing on toes, sparkly eyes', 'holding a leash in the mouth, tail wagging hard, sparkly eyes', 0),
   e('zoomies', '우다다', '우다다다!', '💨', 'running wildly with a crazy happy face, dust clouds and motion lines', 'running wildly with a crazy happy face, ears back, dust clouds and motion lines', 3),
 ];
