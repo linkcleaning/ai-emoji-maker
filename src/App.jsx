@@ -11,7 +11,8 @@ import { packSet, serializeSet, deserializeSet } from './lib/expressions.js';
 import ExpressionPicker, { ExpressionBar } from './components/ExpressionPicker.jsx';
 import LimitModal from './components/LimitModal.jsx';
 import AdminModal from './components/AdminModal.jsx';
-import { fetchServerConfig, fetchMe, startPack } from './lib/server.js';
+import { fetchServerConfig, fetchMe, startPack, getAdminPw } from './lib/server.js';
+import InstallGuide from './components/InstallGuide.jsx';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, downloadZip, shareImages, safeName } from './lib/share.js';
@@ -80,6 +81,7 @@ export default function App() {
   const [limit, setLimit] = useState(null);          // 한도 도달 안내
   const [showAdmin, setShowAdmin] = useState(false);
   const [serverProblem, setServerProblem] = useState(null); // 서버는 있는데 설정 미완료
+  const [adminOn, setAdminOn] = useState(() => !!getAdminPw()); // 관리자로 들어온 상태(이 탭에서만)
   const packTokenRef = useRef(null);
   const [starting, setStarting] = useState(false);
 
@@ -375,7 +377,7 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] w-full overflow-x-clip">
-      <Header onOpenSettings={() => setShowSettings(true)} hasKey={hasKey} />
+      <Header onOpenSettings={() => setShowSettings(true)} hasKey={hasKey} showSettings={!serverCfg || adminOn} />
 
       <main className="mx-auto max-w-xl px-4 pt-5 pb-28 space-y-5">
         {!hasKey && (
@@ -515,8 +517,13 @@ export default function App() {
           </section>
         )}
 
-        <footer className="text-center text-[11px] text-cocoa-400 pt-2">
-          업로드한 사진은 이미지 생성을 위해 선택한 AI 서비스로만 전송돼요.
+        <InstallGuide />
+
+        <footer className="text-center text-[11px] text-cocoa-400 pt-2 space-y-2">
+          <p>올린 사진은 이모티콘을 만드는 데만 쓰이고, 이 앱에 저장되지 않아요.</p>
+          {serverCfg && (
+            <button onClick={() => setShowAdmin(true)} className="text-cocoa-400/60 underline underline-offset-2">관리자</button>
+          )}
         </footer>
       </main>
 
@@ -533,6 +540,7 @@ export default function App() {
 
       {viewIdx !== null && stickers[viewIdx]?.url && (
         <StickerModal
+          allowRaw={!serverCfg || adminOn}
           sticker={stickers[viewIdx]}
           index={viewIdx}
           total={12}
@@ -559,7 +567,13 @@ export default function App() {
         />
       )}
 
-      {showAdmin && <AdminModal onClose={() => { setShowAdmin(false); if (location.hash === '#admin') history.replaceState(null, '', location.pathname); }} notify={notify} />}
+      {showAdmin && (
+        <AdminModal
+          notify={notify}
+          onClose={() => { setShowAdmin(false); setAdminOn(!!getAdminPw()); if (location.hash === '#admin') history.replaceState(null, '', location.pathname); }}
+          onOpenSettings={() => { setShowAdmin(false); setAdminOn(true); setShowSettings(true); }}
+        />
+      )}
 
       {showPicker && (
         <ExpressionPicker

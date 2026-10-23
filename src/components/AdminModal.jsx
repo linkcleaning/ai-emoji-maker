@@ -5,7 +5,7 @@ import { adminStats, adminCredit, adminConfig, getAdminPw, setAdminPw } from '..
 const fmtTime = (ms) => new Date(ms).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** 관리자: 오늘 현황 · 이용 코드 충전 · 입금 안내/한도 설정 */
-export default function AdminModal({ onClose, notify }) {
+export default function AdminModal({ onClose, notify, onOpenSettings }) {
   const [pw, setPw] = useState(getAdminPw());
   const [authed, setAuthed] = useState(false);
   const [err, setErr] = useState('');
@@ -154,6 +154,11 @@ export default function AdminModal({ onClose, notify }) {
                 <button onClick={saveCfg} disabled={busy} className="btn-ghost w-full">설정 저장</button>
               </section>
             )}
+
+            <section className="border-t border-cream-200 pt-4">
+              <button onClick={onOpenSettings} className="btn-ghost w-full">⚙️ 고급 설정 (AI 엔진·생성 방식·배경 처리)</button>
+              <p className="text-[11px] text-cocoa-400 mt-1.5 text-center">손님 화면에는 안 보이는 설정이에요. 이 기기에서만 적용돼요.</p>
+            </section>
           </div>
         )}
       </div>

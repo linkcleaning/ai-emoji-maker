@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Download, Share2, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function StickerModal({ sticker, index, total, onClose, onNav, onSave, onShare, onRegenerate, busy }) {
+export default function StickerModal({ sticker, index, total, onClose, onNav, onSave, onShare, onRegenerate, busy, allowRaw = true }) {
   const [showRaw, setShowRaw] = useState(false);
   if (!sticker) return null;
   const raw = showRaw && sticker.raw;
@@ -28,7 +28,7 @@ export default function StickerModal({ sticker, index, total, onClose, onNav, on
         <div className="text-center my-4">
           <p className="font-display text-2xl">{sticker.icon} {sticker.text}</p>
           <p className="text-xs text-cocoa-400">{sticker.label}</p>
-          {sticker.raw && (
+          {allowRaw && sticker.raw && (
             <button onClick={() => setShowRaw((v) => !v)} className="mt-1 text-[11px] text-cocoa-400 underline underline-offset-2">
               {showRaw ? '완성본 보기' : 'AI 원본 보기'}
             </button>
