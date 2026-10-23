@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 
 export const CATEGORIES = [
-  { id: 'person', label: '인물', emoji: '🙂' },
+  { id: 'person', label: '사람', emoji: '🙂' },
   { id: 'cat', label: '고양이', emoji: '🐱' },
   { id: 'dog', label: '강아지', emoji: '🐶' },
 ];

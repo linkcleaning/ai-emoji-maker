@@ -1,4 +1,4 @@
-# AI 이모티콘 메이커 (PWA)
+# 찍어찍어! (Snap Snap) — AI 이모티콘 메이커 PWA
 
 사진 한 장(인물 · 고양이 · 강아지)으로 **12종 감정 이모티콘 스티커 팩**을 만드는 모바일 PWA.
 React 18 + Vite + Tailwind CSS + Lucide + JSZip.

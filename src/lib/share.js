@@ -37,11 +37,11 @@ export async function downloadZip(stickers, filename = 'my-emoji-pack.zip', shee
  * 공유: Web Share API(파일) → 모바일에서 카카오톡/인스타 등 공유 시트가 열림
  * 미지원 브라우저에서는 false 반환 → 호출부에서 다운로드로 대체
  */
-export async function shareImages(items, text = '내 사진으로 만든 AI 이모티콘 🎨') {
+export async function shareImages(items, text = '찍어찍어!로 만든 내 이모티콘 📸') {
   const files = items.map(({ url, name }) => new File([dataUrlToBlob(url)], name, { type: 'image/png' }));
   if (navigator.canShare && navigator.canShare({ files })) {
     try {
-      await navigator.share({ files, title: 'AI 이모티콘', text });
+      await navigator.share({ files, title: '찍어찍어!', text });
       return 'shared';
     } catch (e) {
       if (e?.name === 'AbortError') return 'cancelled';

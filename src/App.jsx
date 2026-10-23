@@ -346,11 +346,11 @@ export default function App() {
     const sheet = await composeSheet(urls);
     const small = await Promise.all(stickers.map(async (s) => ({ ...s, url: s.url ? await sized(s.url) : null })));
     // ZIP: 보낼 크기 + 원본(768px) 둘 다 담음
-    await downloadZip(small, 'ai-emoji-pack.zip', sheet, sendSize ? stickers : null);
+    await downloadZip(small, 'jjigeo-emoji-pack.zip', sheet, sendSize ? stickers : null);
     notify('ZIP 다운로드를 시작했어요.');
   };
   const saveSheet = async () => {
-    downloadDataUrl(await composeSheet(stickers.map((s) => s.url)), 'ai-emoji-sheet.png');
+    downloadDataUrl(await composeSheet(stickers.map((s) => s.url)), 'jjigeo-emoji-sheet.png');
   };
   const shareAll = async () => {
     const items = (await Promise.all(stickers.map(async (s, i) => (s.url ? { url: await sized(s.url), name: fileName(s, i) } : null)))).filter(Boolean);
@@ -415,7 +415,8 @@ export default function App() {
           <Uploader photo={photo} onFile={onFile} disabled={busy} />
 
           <div>
-            <span className="label">누구를 그릴까요?</span>
+            <span className="label !mb-0.5">사진 속 주인공은 누구예요?</span>
+            <p className="text-[11px] text-cocoa-400 mb-1.5 break-keep">올린 사진에 있는 대상을 골라주세요. 사람은 사람 캐릭터로, 반려동물은 그 아이 모습 그대로 그려요.</p>
             <div className="seg">
               {CATEGORIES.map((c) => (
                 <button key={c.id} disabled={busy} className="seg-btn" aria-pressed={category === c.id} onClick={() => setCategory(c.id)}>

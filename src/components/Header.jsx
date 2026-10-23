@@ -1,4 +1,4 @@
-import { Settings, Sparkles } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 /** 상단 바: 손님용(무료 이용 주소)에서는 설정 버튼을 숨김 */
 export default function Header({ onOpenSettings, hasKey, showSettings = true }) {
@@ -6,10 +6,11 @@ export default function Header({ onOpenSettings, hasKey, showSettings = true }) 
     <header className="sticky top-0 z-30 bg-cream-100/85 backdrop-blur-md border-b border-cream-200/70">
       <div className="mx-auto max-w-xl px-4 h-14 flex items-center gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-peach-400 grid place-items-center text-white shadow-sticker">
-            <Sparkles size={18} />
-          </div>
-          <h1 className="font-display text-lg min-[380px]:text-xl text-cocoa-800 truncate">AI 이모티콘 메이커</h1>
+          <img src="./logo.png" alt="" width="44" height="44" className="w-11 h-11 -my-1 shrink-0 drop-shadow-sm" />
+          <h1 className="min-w-0 flex items-baseline gap-1.5 truncate">
+            <span className="font-display text-xl min-[380px]:text-2xl text-cocoa-800">찍어찍어!</span>
+            <span className="text-[11px] font-bold tracking-wider text-peach-600 uppercase">Snap Snap</span>
+          </h1>
         </div>
         {showSettings && (
           <button onClick={onOpenSettings} className="relative btn-ghost !px-2.5 !py-2" aria-label="설정">

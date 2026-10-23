@@ -100,6 +100,23 @@ const CREAMUS = [
   e('cr_diet', '다이어트는 내일', '다이어트는 내일부터…', '😋', `${BAKER}, guiltily eating a big slice of cake with cream on the cheek, sneaky sideways glance`, null, 4),
 ];
 
+// 크리스마스·연말
+const XMAS_HAT = 'wearing a cozy red Santa hat with white fluffy trim';
+const XMAS = [
+  e('x_merry', '메리 크리스마스', 'Merry Christmas!', '🎄', `${XMAS_HAT}, waving both hands with a big joyful smile, a small decorated Christmas tree and twinkling stars beside`, `${XMAS_HAT}, waving one paw with a big joyful smile, a small decorated Christmas tree and twinkling stars beside`, 0),
+  e('x_santa', '산타 변신', '산타 왔어요!', '🎅', 'dressed as Santa Claus in a red suit with a fluffy white beard, carrying a big sack of presents over the shoulder, jolly laugh', 'dressed as a tiny Santa Claus in a red suit, carrying a small sack of presents, jolly face', 8),
+  e('x_rudolph', '루돌프', '루돌프 출동!', '🦌', 'wearing brown reindeer antler headband and a shiny red clown nose, cheeky grin, jingle bell collar', null, 2),
+  e('x_gift_open', '선물 받았다', '와! 선물이다', '🎁', `${XMAS_HAT}, opening a gift box with a big ribbon, sparkling star eyes, confetti and light rays from the box`, null, 8),
+  e('x_gift_give', '선물 줄게', '선물이야♥', '💝', `${XMAS_HAT}, holding out a wrapped present with a red ribbon with both hands, shy warm smile, small hearts`, null, 1),
+  e('x_tree', '트리 꾸미기', '반짝반짝 트리', '⭐', `${XMAS_HAT}, standing on tiptoe placing a golden star on top of a small Christmas tree with ornaments and lights`, null, 2),
+  e('x_snowman', '눈사람', '눈사람 만들기', '⛄', 'wearing a knitted beanie and mittens, hugging a cute small snowman with a carrot nose, snowflakes falling', null, 1),
+  e('x_snowball', '눈싸움', '받아랏!', '❄️', 'wearing a knitted beanie and mittens, throwing a snowball with a playful grin, snow puffs flying', null, 2),
+  e('x_cold', '추워요', '추워…', '🥶', 'wrapped in a thick scarf and fluffy earmuffs, shivering with blue-ish cheeks, small icicles and snowflakes, chattering teeth', 'wrapped in a thick scarf, fur puffed up, shivering with snowflakes, chattering teeth', 3),
+  e('x_cocoa', '핫초코', '따뜻하다~', '☕', 'wrapped in a cozy blanket holding a mug of hot chocolate topped with marshmallows, steam rising, blissful closed eyes', null, 1),
+  e('x_carol', '캐롤', '징글벨~', '🔔', `${XMAS_HAT}, singing happily while shaking golden jingle bells, music notes floating`, null, 8),
+  e('x_newyear', '새해 복 많이', '새해 복 많이 받으세요', '🎆', 'wearing a colorful Korean hanbok, doing a polite traditional New Year bow (sebae) with hands together, fireworks sparkling above', 'wearing a tiny colorful Korean hanbok, bowing politely with front paws together, fireworks sparkling above', 1),
+];
+
 export const LIBRARY_GROUPS = [
   { id: 'basic', label: '기본', items: BASIC },
   { id: 'office', label: '직장인', items: OFFICE },
@@ -108,6 +125,7 @@ export const LIBRARY_GROUPS = [
   { id: 'pet', label: '반려동물 일상', items: PET },
   { id: 'linkclean', label: '링크클린', items: LINKCLEAN },
   { id: 'creamus', label: '크리머스', items: CREAMUS },
+  { id: 'xmas', label: '크리스마스', items: XMAS },
 ];
 
 const ALL = Object.fromEntries(LIBRARY_GROUPS.flatMap((g) => g.items).map((x) => [x.id, x]));
@@ -119,6 +137,7 @@ export const PACKS = [
   { id: 'love', label: '연애·애정', emoji: '💕', ids: ids('miss_you kiss finger_heart shy jealous hug_me love good_night good_morning sad angry ok') },
   { id: 'daily', label: '인사·일상', emoji: '🌼', ids: ids('hello bye flowers sorry hungry yummy dance surprised bored clap lol thinking') },
   { id: 'pet', label: '반려동물 일상', emoji: '🐾', ids: ids('box back_view stretch roll treat laptop knead peek subway im_ok sleep cool') },
+  { id: 'xmas', label: '크리스마스', emoji: '🎄', ids: XMAS.map((x) => x.id) },
   { id: 'linkclean', label: '링크클린 손님용', emoji: '🧽', ids: LINKCLEAN.map((x) => x.id) },
   { id: 'creamus', label: '크리머스 손님용', emoji: '🍰', ids: CREAMUS.map((x) => x.id) },
 ];
