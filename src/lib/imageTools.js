@@ -104,6 +104,18 @@ export function removeBackground(canvas) {
       if (isGreenKey) { const m = Math.max(d[i], d[i + 2]); if (d[i + 1] > m) d[i + 1] = m; }
     }
   }
+  // 팔·꼬리 사이처럼 테두리와 연결되지 않은 '갇힌 배경'도 제거 (크로마 그린일 때만, 확실한 초록만)
+  if (isGreenKey) {
+    for (let p = 0; p < w * h; p++) {
+      const i = p * 4;
+      if (d[i + 3] === 0) continue;
+      const dd = dist(i);
+      if (dd < T1 * 0.75) d[i + 3] = 0;
+      else if (dd < T1 * 1.2 && d[i + 1] > d[i] + 60 && d[i + 1] > d[i + 2] + 60) {
+        d[i + 3] = Math.min(d[i + 3], Math.round(((dd - T1 * 0.75) / (T1 * 0.45)) * 255));
+      }
+    }
+  }
   // 경계 주변 1px 초록 번짐 추가 제거
   if (isGreenKey) {
     for (let p = 0; p < w * h; p++) {

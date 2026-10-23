@@ -1,8 +1,16 @@
 // ─────────────────────────────────────────────────────────────
 // AI 이미지 생성 API (브라우저에서 사용자 키로 직접 호출)
 // ─────────────────────────────────────────────────────────────
+import { demoSticker, demoSheet } from './demo.js';
 
 export const PROVIDERS = {
+  demo: {
+    label: '데모 체험',
+    models: [{ id: 'demo', label: '데모 (API 없이 미리보기)' }],
+    keyUrl: '',
+    bgMode: 'chroma',
+    noKey: true,
+  },
   gemini: {
     label: 'Google Gemini',
     models: [
@@ -100,8 +108,12 @@ async function generateOpenAI({ apiKey, model, refs, prompt, size = '1024x1024',
 }
 
 /** 통합 호출 — shape: 'square' | 'sheet' */
-export async function generateImage({ settings, refs, prompt, shape = 'square', signal }) {
+export async function generateImage({ settings, refs, prompt, shape = 'square', signal, meta = {} }) {
   const p = settings.provider;
+  if (p === 'demo') {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    return shape === 'sheet' ? demoSheet(meta) : demoSticker(meta);
+  }
   if (p === 'gemini') {
     if (!settings.geminiKey) throw new Error('설정에서 Gemini API 키를 입력해 주세요.');
     return generateGemini({

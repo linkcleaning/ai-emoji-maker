@@ -30,6 +30,9 @@ export default function SettingsModal({ settings, onSave, onClose }) {
           ))}
         </div>
 
+        {prov.noKey ? (
+          <p className="text-xs text-cocoa-600 bg-cream-50 rounded-xl p-3 mb-4">데모 모드는 API 키 없이 예시 캐릭터로 화면을 체험해요. 실제 사진으로 만들려면 Gemini 또는 OpenAI를 고르세요.</p>
+        ) : (<>
         <label className="label" htmlFor="apikey">{prov.label} API Key</label>
         <div className="relative mb-1">
           <input
@@ -50,9 +53,10 @@ export default function SettingsModal({ settings, onSave, onClose }) {
         </a>
 
         <label className="label" htmlFor="model">모델</label>
-        <select id="model" className="input mb-4" value={s[modelField]} onChange={(e) => set(modelField, e.target.value)}>
+        <select id="model" className="input mb-4" value={s[modelField] || ''} onChange={(e) => set(modelField, e.target.value)}>
           {prov.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
+        </>)}
 
         {s.provider === 'openai' && (
           <>

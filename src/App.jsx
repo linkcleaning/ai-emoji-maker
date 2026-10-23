@@ -12,8 +12,10 @@ import { prepareUpload, processSticker, dataUrlToRef, sliceSheet, pieceToSticker
 import { downloadDataUrl, downloadZip, shareImages } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
+// 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
+const IS_PREVIEW = typeof __DEMO_DEFAULT__ !== 'undefined';
 const DEFAULT_SETTINGS = {
-  provider: 'gemini',
+  provider: IS_PREVIEW ? 'demo' : 'gemini',
   geminiKey: '',
   openaiKey: '',
   geminiModel: PROVIDERS.gemini.models[0].id,
@@ -53,7 +55,9 @@ export default function App() {
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
   const optsRef = useRef({ category, style }); // 마지막 생성에 쓴 옵션 (개별 재생성용)
 
-  const hasKey = settings.provider === 'gemini' ? !!settings.geminiKey : !!settings.openaiKey;
+  const hasKey = PROVIDERS[settings.provider]?.noKey
+    || (settings.provider === 'gemini' ? !!settings.geminiKey : !!settings.openaiKey);
+  const isDemo = settings.provider === 'demo';
   const doneCount = stickers.filter((s) => s.status === 'done').length;
   const settledCount = stickers.filter((s) => s.status === 'done' || s.status === 'error').length;
   const hasResults = stickers.some((s) => s.status !== 'idle');
@@ -77,14 +81,14 @@ export default function App() {
   /** 감정 1개 생성 */
   const generateOne = async (i, { signal, opts }) => {
     const bgMode = settings.postprocess ? PROVIDERS[settings.provider].bgMode : 'baked';
-    const refs = [{ mime: photo.mime, base64: photo.base64 }];
+    const refs = photo ? [{ mime: photo.mime, base64: photo.base64 }] : [];
     if (anchorRef.current) refs.push(anchorRef.current);
     const prompt = buildStickerPrompt({
       category: opts.category, style: opts.style, emotion: EMOTIONS[i], bgMode, hasAnchor: !!anchorRef.current,
     });
     patch(i, { status: 'loading', error: null });
     try {
-      const raw = await generateImage({ settings, refs, prompt, shape: 'square', signal });
+      const raw = await generateImage({ settings, refs, prompt, shape: 'square', signal, meta: { ...opts, index: i } });
       const url = await processSticker(raw, { postprocess: settings.postprocess });
       patch(i, { status: 'done', url });
       return raw;
@@ -96,7 +100,7 @@ export default function App() {
   };
 
   const start = async () => {
-    if (!photo) return notify('먼저 사진을 올려주세요.');
+    if (!photo && !isDemo) return notify('먼저 사진을 올려주세요.');
     if (!hasKey) { setShowSettings(true); return notify('API 키를 먼저 입력해 주세요.'); }
 
     const ctrl = new AbortController();
@@ -114,10 +118,11 @@ export default function App() {
         const bgMode = settings.postprocess ? PROVIDERS[settings.provider].bgMode : 'baked';
         const raw = await generateImage({
           settings,
-          refs: [{ mime: photo.mime, base64: photo.base64 }],
+          refs: photo ? [{ mime: photo.mime, base64: photo.base64 }] : [],
           prompt: buildSheetPrompt({ ...opts, bgMode }),
           shape: 'sheet',
           signal: ctrl.signal,
+          meta: opts,
         });
         anchorRef.current = dataUrlToRef(raw);
         setStage('스티커 오려내는 중');
@@ -153,8 +158,14 @@ export default function App() {
 
   const cancel = () => abortRef.current?.abort();
 
+  // 미리보기: 열자마자 예시 팩이 보이도록 자동 생성
+  useEffect(() => {
+    if (IS_PREVIEW && isDemo) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const retry = async (i) => {
-    if (!photo || busy) return;
+    if ((!photo && !isDemo) || busy) return;
     if (!hasKey) return setShowSettings(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -222,6 +233,16 @@ export default function App() {
           </button>
         )}
 
+        {isDemo && (
+          <div className="rounded-3xl bg-white/70 border border-cream-200 p-4 text-sm leading-relaxed">
+            <p className="font-bold mb-1">🧪 데모 모드로 보고 있어요</p>
+            <p className="text-xs text-cocoa-600">
+              AI 대신 앱이 그린 예시 캐릭터로 화면과 흐름을 보여줘요. 배경 제거와 흰 테두리 처리는 실제와 같아요.
+              {IS_PREVIEW ? ' 미리보기 화면에서는 저장·공유가 막혀 있어요. 실제 사진으로 만들려면 배포 주소에서 API 키를 넣어주세요.' : ' ⚙️ 설정에서 Gemini 또는 OpenAI를 고르면 진짜 내 사진으로 만들어져요.'}
+            </p>
+          </div>
+        )}
+
         {/* 업로드 & 옵션 */}
         <section className="card p-4 space-y-4">
           <Uploader photo={photo} onFile={onFile} disabled={busy} />
@@ -258,11 +279,11 @@ export default function App() {
             </div>
           </div>
 
-          <button onClick={start} disabled={busy || !photo} className="btn-primary w-full !py-4 !text-base">
+          <button onClick={start} disabled={busy || (!photo && !isDemo)} className="btn-primary w-full !py-4 !text-base">
             <Wand2 size={19} /> {hasResults ? '새로 만들기' : '이모티콘 12종 만들기'}
           </button>
           <p className="text-[11px] text-center text-cocoa-400 -mt-2">
-            {PROVIDERS[settings.provider].label} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}
+            {PROVIDERS[settings.provider].label}{isDemo && !photo ? ' · 사진 없이도 체험 가능' : ''} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}
           </p>
         </section>
 
