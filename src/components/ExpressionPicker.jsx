@@ -2,8 +2,26 @@ import { useState } from 'react';
 import { X, RotateCw } from 'lucide-react';
 import { LIBRARY_GROUPS, PACKS, packSet, customExpression, matchPack } from '../lib/expressions.js';
 
-/** 옵션 카드 안: 테마 팩 고르기 + '표정 바꾸기' 버튼 */
-export function ExpressionBar({ set, onChange, onOpen, disabled }) {
+// 기본 12표정은 실제 예시 그림이 있음 (스타일별)
+const SAMPLE_IDS = new Set(['hello', 'love', 'fighting', 'panic', 'angry', 'sad', 'tired', 'question', 'party', 'sleep', 'cool', 'ok']);
+
+/** 표정 미리보기 한 칸: 예시 그림(있으면) 또는 아이콘 + 이름 */
+export function ExpressionThumb({ item, style = '3d', small = false }) {
+  const hasSample = SAMPLE_IDS.has(item.id);
+  return (
+    <span className="block min-w-0">
+      <span className={`grid place-items-center aspect-square rounded-xl bg-white ${small ? '' : 'border border-cream-200'} overflow-hidden`}>
+        {hasSample
+          ? <img src={`./samples/${style}/${item.id}.webp`} alt="" loading="lazy" className="w-full h-full object-contain p-0.5" draggable={false} />
+          : <span className={small ? 'text-lg' : 'text-[22px]'} aria-hidden>{item.icon}</span>}
+      </span>
+      <span className="block mt-0.5 text-[9.5px] leading-tight font-bold text-cocoa-600 truncate text-center">{item.label.split('/')[0]}</span>
+    </span>
+  );
+}
+
+/** 옵션 카드 안: 테마 팩 고르기 + '표정 바꾸기' 버튼 + 12칸 미리보기 */
+export function ExpressionBar({ set, onChange, onOpen, disabled, style = '3d' }) {
   const current = matchPack(set);
   return (
     <div>
@@ -31,15 +49,21 @@ export function ExpressionBar({ set, onChange, onOpen, disabled }) {
           <span className="rounded-full px-3 py-1.5 text-xs font-bold bg-peach-500 text-white">✏️ 내 구성</span>
         )}
       </div>
-      <p className="mt-2 text-[11px] text-cocoa-400 leading-relaxed break-keep">
-        {set.map((x) => x.label).join(' · ')}
-      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={disabled}
+        className="mt-2.5 w-full grid grid-cols-6 gap-1.5 rounded-2xl bg-cream-50 p-2 text-left disabled:opacity-60"
+        aria-label="표정 12개 미리보기 — 눌러서 바꾸기"
+      >
+        {set.map((x, i) => <ExpressionThumb key={`${i}-${x.id}`} item={x} style={style} small />)}
+      </button>
     </div>
   );
 }
 
 /** 12칸 표정 편집 창 */
-export default function ExpressionPicker({ set, onSave, onClose }) {
+export default function ExpressionPicker({ set, onSave, onClose, style = '3d' }) {
   const [draft, setDraft] = useState(set);
   const [slot, setSlot] = useState(0);
   const [tab, setTab] = useState(LIBRARY_GROUPS[0].id);
@@ -76,12 +100,11 @@ export default function ExpressionPicker({ set, onSave, onClose }) {
               key={i}
               onClick={() => setSlot(i)}
               aria-pressed={slot === i}
-              className={`min-w-0 rounded-xl px-1 py-2 text-center border-2 transition ${
+              className={`min-w-0 rounded-xl p-1 text-center border-2 transition ${
                 slot === i ? 'border-peach-500 bg-peach-300/20' : 'border-cream-200 bg-cream-50'
               }`}
             >
-              <span className="block text-lg leading-none mb-1">{x.icon}</span>
-              <span className="block text-[10px] font-bold text-cocoa-600 truncate">{x.label}</span>
+              <ExpressionThumb item={x} style={style} small />
             </button>
           ))}
         </div>

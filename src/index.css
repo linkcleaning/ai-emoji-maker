@@ -66,3 +66,24 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .reel, .lever, .jackpot { animation: none !important; }
 }
+
+/* ── 추첨 공 (갤러리 로딩 칸) ── */
+.lotto-ball {
+  width: 54%; aspect-ratio: 1; border-radius: 9999px; display: grid; place-items: center;
+  background: radial-gradient(circle at 32% 28%, #fff 0 10%, var(--c) 32%, var(--c) 100%);
+  background: radial-gradient(circle at 32% 28%, #fff 0 10%, var(--c) 32%, color-mix(in srgb, var(--c) 70%, #000) 100%);
+  box-shadow: 0 4px 8px rgba(62,44,34,.18);
+  animation: ballroll 1.6s ease-in-out infinite;
+}
+.lotto-ball > span {
+  width: 64%; aspect-ratio: 1; border-radius: 9999px; background: rgba(255,255,255,.95);
+  display: grid; place-items: center; font-size: clamp(14px, 6vw, 24px); line-height: 1;
+}
+@keyframes ballroll {
+  0% { transform: translate(-22%, 8%) rotate(-40deg); }
+  25% { transform: translate(18%, -14%) rotate(30deg); }
+  50% { transform: translate(24%, 10%) rotate(80deg); }
+  75% { transform: translate(-14%, -10%) rotate(20deg); }
+  100% { transform: translate(-22%, 8%) rotate(-40deg); }
+}
+@media (prefers-reduced-motion: reduce) { .lotto-ball { animation: none !important; } }

@@ -84,6 +84,7 @@ export default function App() {
   const [adminOn, setAdminOn] = useState(() => !!getAdminPw()); // 관리자로 들어온 상태(이 탭에서만)
   const packTokenRef = useRef(null);
   const [starting, setStarting] = useState(false);
+  const [drawing, setDrawing] = useState(false); // 추첨기 애니메이션이 끝날 때까지 보여주기
 
   const abortRef = useRef(null);
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
@@ -207,6 +208,7 @@ export default function App() {
     setStickers(emptyStickers(expSet));
     setFatal(null);
     fatalRef.current = null;
+    setDrawing(true);
     setBusy(true);
 
     try {
@@ -463,6 +465,7 @@ export default function App() {
           </div>
 
           <ExpressionBar
+            style={style}
             set={expSet}
             disabled={busy}
             onOpen={() => setShowPicker(true)}
@@ -498,7 +501,18 @@ export default function App() {
           </section>
         )}
 
-        {busy && <ProgressPanel done={settledCount} total={12} stage={stage} onCancel={cancel} icons={stickers.map((x) => x.icon)} />}
+        {(busy || drawing) && (
+          <ProgressPanel
+            done={settledCount}
+            total={12}
+            stage={stage}
+            onCancel={cancel}
+            busy={busy}
+            icons={stickers.map((x) => x.icon)}
+            doneFlags={stickers.map((x) => x.status === 'done')}
+            onSettled={() => setDrawing(false)}
+          />
+        )}
 
         {/* 결과 갤러리 */}
         {hasResults && (
@@ -583,6 +597,7 @@ export default function App() {
 
       {showPicker && (
         <ExpressionPicker
+          style={style}
           set={expSet}
           onClose={() => setShowPicker(false)}
           onSave={(set) => { setExpSet(set); storeSet(set); if (!hasResults) setStickers(emptyStickers(set)); setShowPicker(false); notify('표정 구성을 바꿨어요. [새로 만들기]를 누르면 적용돼요.'); }}

@@ -1,8 +1,8 @@
 import { AlertCircle, RotateCw } from 'lucide-react';
-import SlotReel from './SlotReel.jsx';
+
+const BALL_COLORS = ['#FFC93C', '#FF7F66', '#6FB6F2', '#8BD17C', '#B98AF0', '#FF9EC4', '#FFB347', '#5ED3C4', '#F26D6D', '#7FA7FF', '#C5D86D', '#E0A96D'];
 
 export default function Gallery({ stickers, onOpen, onRetry, busy }) {
-  const icons = stickers.map((s) => s.icon);
   return (
     <div className="grid grid-cols-3 gap-3">
       {stickers.map((s, i) => (
@@ -27,8 +27,12 @@ export default function Gallery({ stickers, onOpen, onRetry, busy }) {
             </div>
           ) : (
             s.status === 'loading' ? (
-              // 만드는 중: 슬롯머신 릴이 돌아감
-              <SlotReel icons={icons} seed={i} speed={0.55 + (i % 4) * 0.12} className="w-full aspect-square rounded-2xl bg-cream-50 ring-2 ring-peach-300/60" />
+              // 만드는 중: 추첨 공이 굴러다님
+              <div className="w-full aspect-square rounded-2xl bg-cream-50 ring-2 ring-peach-300/50 grid place-items-center overflow-hidden">
+                <span className="lotto-ball" style={{ '--c': BALL_COLORS[i % BALL_COLORS.length], animationDelay: `${(i % 5) * -0.37}s` }}>
+                  <span>{s.icon}</span>
+                </span>
+              </div>
             ) : (
               <div className="w-full aspect-square rounded-2xl grid place-items-center bg-white/40">
                 <span className="text-2xl opacity-30">{s.icon}</span>
