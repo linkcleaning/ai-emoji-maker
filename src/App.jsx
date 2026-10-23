@@ -237,7 +237,7 @@ export default function App() {
         // 2) 나머지 11종을 기준 캐릭터와 함께 2개씩 동시 생성 (요청 몰림 방지)
         setStage('표정 만드는 중');
         const rest = opts.set.map((_, i) => i).slice(1);
-        await runPool(rest, settings.provider === 'demo' ? 3 : 2, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
+        await runPool(rest, settings.provider === 'demo' ? 3 : 4, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
         if (ctrl.signal.aborted) throw fatalRef.current || new DOMException('Aborted', 'AbortError');
       }
       setStage('완성!');
@@ -311,7 +311,7 @@ export default function App() {
         const raw0 = await generateOne(0, { signal: ctrl.signal, opts: optsRef.current });
         if (raw0) anchorRef.current = await toJpegRef(raw0);
       }
-      await runPool(idx.filter((i) => i !== 0 || !anchorRef.current), 2, (i) => generateOne(i, { signal: ctrl.signal, opts: optsRef.current }), ctrl.signal);
+      await runPool(idx.filter((i) => i !== 0 || !anchorRef.current), 4, (i) => generateOne(i, { signal: ctrl.signal, opts: optsRef.current }), ctrl.signal);
     } catch { /* 아래에서 처리 */ }
     const fe = fatalRef.current;
     if (fe) setFatal({ message: fe.message, help: fe.help, detail: fe.detail });

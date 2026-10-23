@@ -1,6 +1,8 @@
-import { AlertCircle, RotateCw, Loader2 } from 'lucide-react';
+import { AlertCircle, RotateCw } from 'lucide-react';
+import SlotReel from './SlotReel.jsx';
 
 export default function Gallery({ stickers, onOpen, onRetry, busy }) {
+  const icons = stickers.map((s) => s.icon);
   return (
     <div className="grid grid-cols-3 gap-3">
       {stickers.map((s, i) => (
@@ -8,8 +10,7 @@ export default function Gallery({ stickers, onOpen, onRetry, busy }) {
           {s.status === 'done' ? (
             <button
               onClick={() => onOpen(i)}
-              className="pop block w-full aspect-square rounded-2xl bg-white/50 hover:bg-white transition active:scale-95"
-              style={{ animationDelay: `${(i % 3) * 60}ms` }}
+              className="jackpot block w-full aspect-square rounded-2xl bg-white/50 hover:bg-white transition active:scale-95"
               aria-label={`${s.label} 크게 보기`}
             >
               <img src={s.url} alt={s.label} className="w-full h-full object-contain" draggable={false} />
@@ -25,11 +26,14 @@ export default function Gallery({ stickers, onOpen, onRetry, busy }) {
               </div>
             </div>
           ) : (
-            <div className={`w-full aspect-square rounded-2xl grid place-items-center ${s.status === 'loading' ? 'shimmer' : 'bg-white/40'}`}>
-              {s.status === 'loading'
-                ? <Loader2 className="animate-spin text-peach-400" size={22} />
-                : <span className="text-2xl opacity-30">{s.icon}</span>}
-            </div>
+            s.status === 'loading' ? (
+              // 만드는 중: 슬롯머신 릴이 돌아감
+              <SlotReel icons={icons} seed={i} speed={0.55 + (i % 4) * 0.12} className="w-full aspect-square rounded-2xl bg-cream-50 ring-2 ring-peach-300/60" />
+            ) : (
+              <div className="w-full aspect-square rounded-2xl grid place-items-center bg-white/40">
+                <span className="text-2xl opacity-30">{s.icon}</span>
+              </div>
+            )
           )}
           <p className="mt-1 text-center text-[11px] font-bold text-cocoa-600 truncate">{s.label}</p>
         </div>

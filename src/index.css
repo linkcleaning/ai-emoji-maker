@@ -49,3 +49,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bob, .pop, .shimmer, .animate-spin { animation: none !important; }
 }
+
+/* ── 슬롯머신 ── */
+@keyframes reel { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.reel { animation: reel var(--spd, .9s) linear infinite; filter: blur(.6px); will-change: transform; }
+.reel-fade { background: linear-gradient(#FBF8F3 0%, rgba(251,248,243,0) 28%, rgba(251,248,243,0) 72%, #FBF8F3 100%); }
+.slot-window .reel-fade { background: linear-gradient(#3E2C22 0%, rgba(62,44,34,0) 30%, rgba(62,44,34,0) 70%, #3E2C22 100%); }
+@keyframes jackpot {
+  0% { box-shadow: 0 0 0 0 rgba(255,127,102,.75); }
+  60% { box-shadow: 0 0 0 10px rgba(255,127,102,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,127,102,0); }
+}
+.jackpot { animation: pop .45s cubic-bezier(.2,.9,.3,1.5) both, jackpot .9s ease-out .1s 1; }
+@keyframes lever { 0%,100% { transform: rotate(0); } 50% { transform: rotate(18deg); } }
+.lever { transform-origin: 50% 90%; animation: lever 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .reel, .lever, .jackpot { animation: none !important; }
+}
