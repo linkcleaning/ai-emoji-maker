@@ -1,7 +1,7 @@
 // 찍어찍어! (Snap Snap) - Service Worker
 // 앱 셸만 캐시하고, AI API 호출은 절대 캐시하지 않습니다.
-const CACHE = 'jjigeo-v4';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './logo.png'];
+const CACHE = 'jjigeo-v5';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './logo.png', './style-3d.png', './style-2d.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

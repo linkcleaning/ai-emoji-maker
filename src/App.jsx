@@ -435,13 +435,19 @@ export default function App() {
                   disabled={busy}
                   onClick={() => setStyle(s.id)}
                   aria-pressed={style === s.id}
-                  className={`rounded-2xl p-3 text-left border-2 transition ${
+                  className={`rounded-2xl p-3 text-center border-2 transition ${
                     style === s.id ? 'border-peach-400 bg-peach-300/15' : 'border-cream-200 bg-cream-50'
                   }`}
                 >
-                  <span className="text-2xl block mb-1">{s.id === '3d' ? '🧸' : '🎨'}</span>
+                  <img
+                    src={s.id === '3d' ? './style-3d.png' : './style-2d.png'}
+                    alt={`${s.label} 예시`}
+                    width="96" height="96"
+                    className="block mx-auto w-20 h-20 min-[380px]:w-24 min-[380px]:h-24 object-contain mb-1.5 drop-shadow-sm"
+                    draggable={false}
+                  />
                   <span className="block font-bold text-sm">{s.label}</span>
-                  <span className="block text-[11px] text-cocoa-400">{s.desc}</span>
+                  <span className="block text-[11px] text-cocoa-400 break-keep">{s.desc}</span>
                 </button>
               ))}
             </div>
