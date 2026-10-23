@@ -88,32 +88,43 @@ export function removeBackground(canvas) {
   };
 
   if (isGreenKey) {
-    // ── 크로마 그린: '초록이 얼마나 우세한가(g - max(r,b))'로 투명도 결정 ──
-    // AI가 캐릭터 둘레에 그리는 옅은 연두빛 번짐(후광)까지 배경으로 처리 → 테두리에 초록 점이 남지 않음
+    // ── 크로마 그린 ──
+    // 배경 = '밝고 확실한 초록'. 캐릭터 털·옷에 비친 초록(그림자 쪽)은 밝기가 낮아 배경으로 보지 않음.
+    // 확실한 배경 픽셀을 따라서만 안쪽으로 번져 나가고, 경계의 애매한 픽셀은 반투명 처리만 하고 멈춤.
+    const keyG = key[1];
     const gness = (i) => d[i + 1] - Math.max(d[i], d[i + 2]);
-    const LO = 14, HI = 48; // LO 이하: 캐릭터(불투명), HI 이상: 배경(투명)
+    const bright = (i) => d[i + 1] >= keyG * 0.55;
+    const LO = 22, HI = 70;   // 초록 우세 정도: LO 이하 = 캐릭터, HI 이상 = 배경
+    const SPREAD = 46;         // 이 이상 + 밝은 초록이어야 '확실한 배경'으로 보고 계속 번짐
     seedEdges();
     while (stack.length) {
       const p = stack.pop();
       const i = p * 4;
       const g = gness(i);
-      if (g <= LO) continue; // 캐릭터에 닿음 → 더 들어가지 않음
+      if (g <= LO || !bright(i)) continue; // 캐릭터(또는 초록이 비친 털) → 멈춤
       const a = g >= HI ? 0 : (HI - g) / (HI - LO);
       d[i + 3] = Math.min(d[i + 3], Math.round(a * 255));
-      const m = Math.max(d[i], d[i + 2]);
-      if (d[i + 1] > m) d[i + 1] = m; // 초록 번짐 제거
-      const x = p % w, y = (p / w) | 0;
-      push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+      if (g >= SPREAD) {
+        const x = p % w, y = (p / w) | 0;
+        push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+      }
     }
-    // 팔·꼬리 사이처럼 테두리와 이어지지 않은 '갇힌 배경': 확실히 초록인 곳만 제거
+    // 팔·꼬리 사이처럼 바깥과 이어지지 않은 '갇힌 배경': 아주 확실한 밝은 초록만 제거
     for (let p = 0; p < w * h; p++) {
       const i = p * 4;
       if (d[i + 3] === 0) continue;
       const g = gness(i);
-      if (g >= 70) d[i + 3] = 0;
-      else if (g > 40) d[i + 3] = Math.min(d[i + 3], Math.round(((70 - g) / 30) * 255));
-      const m = Math.max(d[i], d[i + 2]);
-      if (d[i + 1] > m + 12) d[i + 1] = m + 12; // 남은 가장자리 초록기 제거
+      if (d[i + 1] >= keyG * 0.7) {
+        if (g >= 95) d[i + 3] = 0;
+        else if (g > 70) d[i + 3] = Math.min(d[i + 3], Math.round(((95 - g) / 25) * 255));
+      }
+    }
+    // 초록 반사(스필) 제거: 남은 모든 픽셀의 초록 기운을 빨강·파랑 수준으로 낮춤 (투명도는 그대로)
+    for (let p = 0; p < w * h; p++) {
+      const i = p * 4;
+      if (d[i + 3] === 0) continue;
+      const m = Math.max(d[i], d[i + 2]), avg = (d[i] + d[i + 2]) / 2;
+      if (d[i + 1] > m) d[i + 1] = Math.round(Math.max(m, avg + 8));
     }
   } else {
     // ── 그 밖의 단색 배경(흰색 등): 색 거리로 판단 ──

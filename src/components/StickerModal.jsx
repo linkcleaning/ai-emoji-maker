@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { X, Download, Share2, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function StickerModal({ sticker, index, total, onClose, onNav, onSave, onShare, onRegenerate, busy }) {
+  const [showRaw, setShowRaw] = useState(false);
   if (!sticker) return null;
+  const raw = showRaw && sticker.raw;
   return (
     <div className="fixed inset-0 z-50 bg-cocoa-800/50 grid place-items-center p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
       <div className="card w-full max-w-sm p-4 sm:p-5 pop" onClick={(e) => e.stopPropagation()}>
@@ -12,7 +15,7 @@ export default function StickerModal({ sticker, index, total, onClose, onNav, on
 
         <div className="relative">
           <div className="checker rounded-2xl aspect-square">
-            <img src={sticker.url} alt={sticker.label} className="w-full h-full object-contain" />
+            <img src={raw || sticker.url} alt={sticker.label} className="w-full h-full object-contain" />
           </div>
           <button onClick={() => onNav(-1)} className="absolute left-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow grid place-items-center" aria-label="이전">
             <ChevronLeft size={20} />
@@ -25,6 +28,11 @@ export default function StickerModal({ sticker, index, total, onClose, onNav, on
         <div className="text-center my-4">
           <p className="font-display text-2xl">{sticker.icon} {sticker.text}</p>
           <p className="text-xs text-cocoa-400">{sticker.label}</p>
+          {sticker.raw && (
+            <button onClick={() => setShowRaw((v) => !v)} className="mt-1 text-[11px] text-cocoa-400 underline underline-offset-2">
+              {showRaw ? '완성본 보기' : 'AI 원본 보기'}
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-2">

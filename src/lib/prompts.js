@@ -120,6 +120,7 @@ function backgroundText(mode) {
 
 const COMMON =
   'Exactly ONE character in a single sticker, centered, the whole character and all props fully inside the frame with comfortable margin, ' +
+  'no floating bars, lines, frames, banners, buttons, UI elements or empty speech bubbles (only the props described), ' +
   'nothing cropped. Bold readable silhouette that works at small messenger-sticker size. No extra text except the symbols described, ' +
   'no watermark, no signature, no frame, no panel borders.';
 

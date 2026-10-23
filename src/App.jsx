@@ -112,7 +112,7 @@ export default function App() {
         onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
       });
       const url = await processSticker(raw, { postprocess: settings.postprocess });
-      patch(i, { status: 'done', url });
+      patch(i, { status: 'done', url, raw });
       return raw;
     } catch (e) {
       if (e.name === 'AbortError') { patch(i, { status: 'idle' }); throw e; }
