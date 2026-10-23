@@ -20,7 +20,7 @@ function makeCanvas(w, h) {
 }
 
 /** 업로드 사진 → 최대 1024px JPEG(base64) */
-export async function prepareUpload(file, max = 1024) {
+export async function prepareUpload(file, max = 768) {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
@@ -30,7 +30,7 @@ export async function prepareUpload(file, max = 1024) {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0, c.width, c.height);
-    const dataUrl = c.toDataURL('image/jpeg', 0.9);
+    const dataUrl = c.toDataURL('image/jpeg', 0.86);
     return { dataUrl, mime: 'image/jpeg', base64: dataUrl.split(',')[1] };
   } finally {
     URL.revokeObjectURL(url);
@@ -438,16 +438,87 @@ export function removeFrame(canvas) {
 }
 
 /** 4행×3열 시트 → 12장 원본 조각(dataURL). 배경 제거 후 셀 단위로 자름 */
+/**
+ * 4행×3열 시트 → 12장 조각
+ * AI가 칸을 정확히 안 맞춰 그려도 되도록, 배경을 지운 뒤 '그림 덩어리'를 찾아
+ * 각 덩어리의 중심이 들어간 칸에 배정해서 오려냄 (칸 경계에서 잘리지 않음)
+ */
 export async function sliceSheet(rawDataUrl, cols = 3, rows = 4) {
   const img = await loadImage(rawDataUrl);
   const full = imageToCanvas(img);
   removeBackground(full);
-  const cw = full.width / cols, ch = full.height / rows;
-  const pieces = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      pieces.push(imageToCanvas(full, c * cw, r * ch, cw, ch));
+  removeFrame(full);
+  const w = full.width, h = full.height;
+  const ctx = full.getContext('2d', { willReadFrequently: true });
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const cw = w / cols, ch = h / rows;
+
+  // 덩어리 찾기
+  const label = new Int32Array(w * h);
+  const comps = [null];
+  const stack = [];
+  const minSize = Math.max(30, Math.round(w * h * 0.00004));
+  for (let s = 0; s < w * h; s++) {
+    if (label[s] || d[s * 4 + 3] <= 110) continue;
+    const id = comps.length;
+    label[s] = id; stack.push(s);
+    let n = 0, sx = 0, sy = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    while (stack.length) {
+      const p = stack.pop(); n++;
+      const x = p % w, y = (p / w) | 0;
+      sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      const nb = [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1];
+      for (const q of nb) if (q >= 0 && !label[q] && d[q * 4 + 3] > 110) { label[q] = id; stack.push(q); }
     }
+    comps.push({ n, cx: sx / n, cy: sy / n, x0, y0, x1, y1 });
+  }
+
+  // 덩어리 → 칸 배정
+  //  1) 큰 덩어리(캐릭터 몸)는 중심이 들어간 칸으로
+  //  2) 작은 덩어리(하트·물음표 같은 소품)는 가장 가까운 캐릭터를 따라감 → 옆 칸 소품이 섞이지 않음
+  const cellOf = (c) => Math.min(rows - 1, Math.floor(c.cy / ch)) * cols + Math.min(cols - 1, Math.floor(c.cx / cw));
+  const groups = Array.from({ length: cols * rows }, () => []);
+  const valid = comps.map((c, id) => (c && c.n >= minSize ? id : 0)).filter(Boolean);
+  const maxN = Math.max(1, ...valid.map((id) => comps[id].n));
+  const big = valid.filter((id) => comps[id].n >= maxN * 0.15);
+  const owner = new Map();
+  for (const id of big) { const k = cellOf(comps[id]); groups[k].push(id); owner.set(id, k); }
+  const gap = (c, b) => Math.hypot(Math.max(b.x0 - c.cx, 0, c.cx - b.x1), Math.max(b.y0 - c.cy, 0, c.cy - b.y1));
+  for (const id of valid) {
+    if (owner.has(id)) continue;
+    const c = comps[id];
+    let best = null, bd = Infinity;
+    for (const b of big) { const dd = gap(c, comps[b]); if (dd < bd) { bd = dd; best = b; } }
+    groups[best != null && bd < Math.max(cw, ch) * 0.6 ? owner.get(best) : cellOf(c)].push(id);
+  }
+
+  const pieces = [];
+  for (let k = 0; k < cols * rows; k++) {
+    const ids = groups[k];
+    if (!ids.length) { // 못 찾으면 예전처럼 칸 그대로
+      pieces.push(imageToCanvas(full, (k % cols) * cw, Math.floor(k / cols) * ch, cw, ch));
+      continue;
+    }
+    const mine = new Set(ids);
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (const id of ids) { const c = comps[id]; x0 = Math.min(x0, c.x0); y0 = Math.min(y0, c.y0); x1 = Math.max(x1, c.x1); y1 = Math.max(y1, c.y1); }
+    const pad = 3;
+    x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+    const pw = x1 - x0 + 1, ph = y1 - y0 + 1;
+    const piece = makeCanvas(pw, ph);
+    const pctx = piece.getContext('2d', { willReadFrequently: true });
+    const out = pctx.createImageData(pw, ph);
+    for (let y = 0; y < ph; y++) {
+      for (let x = 0; x < pw; x++) {
+        const sp = (y + y0) * w + (x + x0), si = sp * 4, di = (y * pw + x) * 4;
+        const l = label[sp];
+        if (l && !mine.has(l)) continue; // 다른 칸의 그림은 빼기
+        out.data[di] = d[si]; out.data[di + 1] = d[si + 1]; out.data[di + 2] = d[si + 2]; out.data[di + 3] = d[si + 3];
+      }
+    }
+    pctx.putImageData(out, 0, 0);
+    pieces.push(piece);
   }
   return pieces;
 }

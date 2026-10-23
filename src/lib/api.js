@@ -123,7 +123,10 @@ async function fetchWithTimeout(url, opts, signal, ms = 150000) {
  * Gemini 이미지 생성
  * @param refs [{mime, base64}] 참조 이미지(원본 사진, 기준 캐릭터)
  */
-async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', signal, server }) {
+// 작은 출력(512px) 지원 여부 — 모델이 거부하면 기억해 두고 기본 크기로 다시 요청
+let smallOutputUnsupported = false;
+
+async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', signal, server, imageSize }) {
   // server: { token } → 우리 서버(/api/generate)를 거쳐 사장님 키로 호출
   const url = server ? '/api/generate' : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const authHeaders = server ? { 'x-pack-token': server.token, 'x-model': model } : { 'x-goog-api-key': apiKey };
@@ -136,9 +139,19 @@ async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', sig
     headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({
       contents: [{ role: 'user', parts }],
-      generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } },
+      generationConfig: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: aspect, ...(imageSize && !smallOutputUnsupported ? { imageSize } : {}) },
+      },
     }),
   }, signal);
+  if (!res.ok && res.status === 400 && imageSize && !smallOutputUnsupported) {
+    const txt = await res.clone().text().catch(() => '');
+    if (/image_?size|imageSize|invalid value|unsupported/i.test(txt)) {
+      smallOutputUnsupported = true;
+      return generateGemini({ apiKey, model, refs, prompt, aspect, signal, server });
+    }
+  }
   if (!res.ok) throw await readError(res);
   const data = await res.json();
   const cand = data?.candidates?.[0];
@@ -230,6 +243,7 @@ async function generateOnce({ settings, refs, prompt, shape = 'square', signal, 
     return generateGemini({
       model: settings.serverModel || PROVIDERS.server.models[0].id, refs, prompt,
       aspect: shape === 'sheet' ? '3:4' : '1:1', signal, server: { token: settings.packToken },
+      imageSize: shape === 'sheet' ? undefined : '512',
     });
   }
   if (p === 'gemini') {
@@ -237,6 +251,7 @@ async function generateOnce({ settings, refs, prompt, shape = 'square', signal, 
     return generateGemini({
       apiKey: settings.geminiKey, model: settings.geminiModel, refs, prompt,
       aspect: shape === 'sheet' ? '3:4' : '1:1', signal,
+      imageSize: shape === 'sheet' ? undefined : '512',
     });
   }
   if (!settings.openaiKey) throw makeError('설정에서 OpenAI API 키를 입력해 주세요.', { fatal: true, short: '키 없음' });

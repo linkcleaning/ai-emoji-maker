@@ -82,13 +82,13 @@ export default function SettingsModal({ settings, onSave, onClose, serverInfo, o
 
         <span className="label">생성 방식</span>
         <div className="seg mb-1">
-          <button className="seg-btn" aria-pressed={s.mode === 'individual'} onClick={() => set('mode', 'individual')}>개별 12장 · 고품질</button>
-          <button className="seg-btn" aria-pressed={s.mode === 'sheet'} onClick={() => set('mode', 'sheet')}>시트 1장 · 저렴</button>
+          <button className="seg-btn" aria-pressed={s.mode === 'sheet'} onClick={() => set('mode', 'sheet')}>시트 1장 · 빠름(추천)</button>
+          <button className="seg-btn" aria-pressed={s.mode === 'individual'} onClick={() => set('mode', 'individual')}>개별 12장 · 고화질</button>
         </div>
         <p className="text-[11px] text-cocoa-400 mb-4 leading-relaxed">
           {s.mode === 'individual'
-            ? '감정마다 따로 그려 품질과 개별 재생성이 좋아요. API 호출 12회.'
-            : '한 장에 12개를 그린 뒤 자동으로 잘라요. 호출 1회로 빠르지만 간혹 배치가 어긋날 수 있어요.'}
+            ? '감정마다 따로 그려 화질이 좋지만 1~2분 걸려요. AI 호출 12회 이상(팩당 약 1,100원).'
+            : '한 장에 12개를 그린 뒤 자동으로 오려내요. 20~40초면 끝나고 AI 호출 1회(팩당 약 100원). 카톡용 작은 크기엔 충분해요.'}
         </p>
 
         <label className="flex items-start gap-3 rounded-2xl bg-cream-50 p-3 mb-4 cursor-pointer">

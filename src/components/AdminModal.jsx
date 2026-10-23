@@ -71,8 +71,8 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
                 <p className="text-2xl font-bold tabular-nums">{data.total}<span className="text-sm text-cocoa-400"> / {data.config.dailyCap}</span></p>
               </div>
               <div className="rounded-2xl bg-cream-100 p-3">
-                <p className="text-[11px] font-bold text-cocoa-400">예상 AI 비용(오늘)</p>
-                <p className="text-2xl font-bold tabular-nums">약 {(data.total * 1100).toLocaleString()}<span className="text-sm text-cocoa-400">원</span></p>
+                <p className="text-[11px] font-bold text-cocoa-400">예상 AI 비용(오늘 · 호출 {data.calls ?? 0}회)</p>
+                <p className="text-2xl font-bold tabular-nums">약 {((data.calls ?? 0) * 95).toLocaleString()}<span className="text-sm text-cocoa-400">원</span></p>
               </div>
             </div>
 

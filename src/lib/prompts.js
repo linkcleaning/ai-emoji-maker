@@ -147,7 +147,7 @@ export function buildSheetPrompt({ category, style, bgMode, emotions = EMOTIONS 
   const list = emotions.map((e, i) => `${i + 1}. ${e.label.split('/')[1] || e.label}: ${category === 'person' ? e.person : e.pet}`).join('\n');
   return [
     'A set of 12 distinct emoji stickers of the SAME character, arranged as a sticker sheet in a strict grid of 3 columns × 4 rows,',
-    'equal-sized cells, each sticker centered in its own cell with wide empty gaps between stickers so no two stickers touch.',
+    'equal-sized cells, each sticker centered in its own cell and kept entirely inside that cell, with wide empty green gaps (at least 8% of a cell) around every sticker so no two stickers touch or overlap.',
     `STYLE: ${STYLE_TEXT[style]}.`,
     `SUBJECT: ${SUBJECT_TEXT[category]}`,
     'Keep the character design perfectly consistent across all 12 stickers; only expression and pose change.',

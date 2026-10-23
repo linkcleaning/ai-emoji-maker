@@ -28,6 +28,7 @@ export function createStore(sql) {
     sql(`CREATE TABLE IF NOT EXISTS tokens (token TEXT PRIMARY KEY, code TEXT, remaining INTEGER, expires INTEGER)`);
     sql(`CREATE TABLE IF NOT EXISTS config (k TEXT PRIMARY KEY, v TEXT)`);
     sql(`CREATE TABLE IF NOT EXISTS admin_fail (at INTEGER)`);
+    sql(`CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, calls INTEGER DEFAULT 0)`);
   };
   init();
 
@@ -100,9 +101,14 @@ export function createStore(sql) {
   /** AI 호출 1회 사용 (토큰의 남은 횟수 차감). 실패하면 refund로 되돌림 */
   const useCall = (token, now = Date.now()) => {
     const r = sql(`UPDATE tokens SET remaining = remaining - 1 WHERE token = ? AND remaining > 0 AND expires > ? RETURNING remaining, code`, token, now);
-    return r.length ? { ok: true, remaining: r[0].remaining, code: r[0].code } : { ok: false };
+    if (!r.length) return { ok: false };
+    sql(`INSERT INTO daily (day, calls) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET calls = calls + 1`, kstDay(now));
+    return { ok: true, remaining: r[0].remaining, code: r[0].code };
   };
-  const refundCall = (token) => { sql(`UPDATE tokens SET remaining = remaining + 1 WHERE token = ?`, token); };
+  const refundCall = (token, now = Date.now()) => {
+    sql(`UPDATE tokens SET remaining = remaining + 1 WHERE token = ?`, token);
+    sql(`UPDATE daily SET calls = MAX(calls - 1, 0) WHERE day = ?`, kstDay(now));
+  };
 
   /** 관리자: 코드에 팩 충전(음수면 차감) */
   const addCredit = (code, packs, memo = '', now = Date.now()) => {
@@ -119,7 +125,8 @@ export function createStore(sql) {
     const total = rows.reduce((s, r) => s + r.free_used + r.paid_used, 0);
     const log = sql(`SELECT code, packs, memo, at FROM credit_log ORDER BY id DESC LIMIT 30`);
     const credits = sql(`SELECT code, packs FROM credit WHERE packs > 0 ORDER BY updated DESC LIMIT 100`);
-    return { day, total, users: rows, log, credits, config: getConfig() };
+    const calls = (one(`SELECT calls FROM daily WHERE day = ?`, day) || { calls: 0 }).calls;
+    return { day, total, calls, users: rows, log, credits, config: getConfig() };
   };
 
   /** 관리자 비밀번호 무차별 대입 방지: 1시간에 10회 실패하면 잠금 */
