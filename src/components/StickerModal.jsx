@@ -36,8 +36,8 @@ export default function StickerModal({ sticker, index, total, onClose, onNav, on
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <button onClick={onSave} className="btn-primary !px-2"><Download size={16} /> 저장</button>
-          <button onClick={onShare} className="btn-ghost !px-2"><Share2 size={16} /> 공유</button>
+          <button onClick={onShare} className="btn-primary !px-2"><Share2 size={16} /> 보내기</button>
+          <button onClick={onSave} className="btn-ghost !px-2"><Download size={16} /> 저장</button>
           <button onClick={onRegenerate} disabled={busy} className="btn-ghost !px-2"><RotateCw size={16} /> 다시</button>
         </div>
       </div>

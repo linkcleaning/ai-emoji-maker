@@ -323,8 +323,7 @@ export default function App() {
 
   // ── 내보내기 ─────────────────────────────
   const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.png`;
-  const sendSize = settings.sendSize ?? 200;
-  const setSendSize = (v) => { const s = { ...settings, sendSize: v }; setSettings(s); saveSettings(s); };
+  const sendSize = 120; // 카톡·문자로 보낼 크기(px) — 작게 고정
   // 공유 버튼을 누른 순간 바로 보낼 수 있게(아이폰은 지연되면 공유가 막힘) 미리 줄여둠
   const [sizedMap, setSizedMap] = useState({});
   useEffect(() => {
@@ -339,7 +338,7 @@ export default function App() {
   const saveOne = async (i) => downloadDataUrl(await sized(stickers[i].url), fileName(stickers[i], i));
   const shareOne = async (i) => {
     const r = await shareImages([{ url: await sized(stickers[i].url), name: fileName(stickers[i], i) }]);
-    if (r === 'unsupported') { await saveOne(i); notify('이 브라우저는 공유를 지원하지 않아 저장했어요.'); }
+    if (r === 'unsupported') { await saveOne(i); notify('이 브라우저는 바로 보내기를 지원하지 않아 저장했어요.'); }
   };
   const zipAll = async () => {
     const urls = stickers.map((s) => s.url);
@@ -349,13 +348,23 @@ export default function App() {
     await downloadZip(small, 'jjigeo-emoji-pack.zip', sheet, sendSize ? stickers : null);
     notify('ZIP 다운로드를 시작했어요.');
   };
-  const saveSheet = async () => {
-    downloadDataUrl(await composeSheet(stickers.map((s) => s.url)), 'jjigeo-emoji-sheet.png');
+  // 시트(12장 한 장) — 누르는 즉시 공유 창이 뜨도록 미리 만들어 둠
+  const [sheetUrl, setSheetUrl] = useState(null);
+  useEffect(() => {
+    if (busy || !stickers.some((s) => s.url)) { setSheetUrl(null); return; }
+    let alive = true;
+    composeSheet(stickers.map((s) => s.url), { cell: 240, gap: 16 }).then((u) => alive && setSheetUrl(u));
+    return () => { alive = false; };
+  }, [stickers, busy]);
+  const shareSheet = async () => {
+    const url = sheetUrl || (await composeSheet(stickers.map((s) => s.url), { cell: 240, gap: 16 }));
+    const r = await shareImages([{ url, name: 'jjigeo-sheet.png' }]);
+    if (r === 'unsupported') { downloadDataUrl(url, 'jjigeo-sheet.png'); notify('이 브라우저는 바로 보내기를 지원하지 않아 저장했어요.'); }
   };
   const shareAll = async () => {
     const items = (await Promise.all(stickers.map(async (s, i) => (s.url ? { url: await sized(s.url), name: fileName(s, i) } : null)))).filter(Boolean);
     const r = await shareImages(items);
-    if (r === 'unsupported') { await zipAll(); notify('공유 미지원 브라우저라 ZIP으로 저장했어요.'); }
+    if (r === 'unsupported') { await zipAll(); notify('이 브라우저는 바로 보내기를 지원하지 않아 ZIP으로 저장했어요.'); }
   };
 
   const nav = (d) => {
@@ -498,16 +507,6 @@ export default function App() {
               <h2 className="font-display text-xl">내 이모티콘 팩</h2>
               <span className="text-xs font-bold text-cocoa-400">{doneCount}/12 완성</span>
             </div>
-            {doneCount > 0 && (
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold text-cocoa-400 shrink-0">보낼 크기</span>
-                <div className="seg flex-1 !p-0.5">
-                  {[[160, '아주 작게'], [200, '작게'], [360, '보통'], [0, '원본']].map(([v, l]) => (
-                    <button key={v} className="seg-btn !py-1.5 !text-xs" aria-pressed={sendSize === v} onClick={() => setSendSize(v)}>{l}</button>
-                  ))}
-                </div>
-              </div>
-            )}
             {failedCount > 0 && !busy && (
               <button onClick={retryFailed} className="btn-ghost w-full mb-3 !border-2 !border-peach-300">
                 실패한 것만 다시 ({failedCount}장)
@@ -518,7 +517,7 @@ export default function App() {
             </div>
             {doneCount > 0 && (
               <p className="text-[11px] text-cocoa-400 mt-3 flex items-center gap-1">
-                <Info size={12} /> 스티커를 누르면 크게 보고 개별 저장·공유·재생성할 수 있어요.
+                <Info size={12} /> 스티커를 누르면 한 장씩 크게 보고 바로 보낼 수 있어요.
               </p>
             )}
           </section>
@@ -538,9 +537,9 @@ export default function App() {
       {doneCount > 0 && !busy && (
         <div className="fixed bottom-0 inset-x-0 z-40 bg-cream-100/90 backdrop-blur-md border-t border-cream-200 pb-[env(safe-area-inset-bottom)]">
           <div className="mx-auto max-w-xl px-4 py-3 grid grid-cols-[1fr_auto_auto] gap-2">
-            <button onClick={zipAll} className="btn-primary"><PackageOpen size={17} /> 전체 ZIP</button>
-            <button onClick={saveSheet} className="btn-ghost" aria-label="시트 이미지 저장"><LayoutGrid size={17} /> 시트</button>
-            <button onClick={shareAll} className="btn-ghost" aria-label="공유"><Share2 size={17} /> 공유</button>
+            <button onClick={shareSheet} className="btn-primary"><LayoutGrid size={17} /> 시트 보내기</button>
+            <button onClick={shareAll} className="btn-ghost" aria-label="12장 따로 보내기"><Share2 size={17} /> 12장</button>
+            <button onClick={zipAll} className="btn-ghost" aria-label="ZIP 파일로 저장"><PackageOpen size={17} /> ZIP</button>
           </div>
         </div>
       )}
