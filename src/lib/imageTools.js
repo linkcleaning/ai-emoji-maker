@@ -294,7 +294,147 @@ export async function processSticker(rawDataUrl, { postprocess = true } = {}) {
   const c = imageToCanvas(img);
   if (!postprocess) return fitSquare(c).toDataURL('image/png');
   removeBackground(c);
+  removeFrame(c);
   return dieCut(c).toDataURL('image/png');
+}
+
+/**
+ * AI가 그린 이미지의 배경이 정상인지 검사
+ * 정상: 이미지 가장자리 둘레가 대부분 초록(또는 투명) → 액자·카드가 없음
+ */
+export async function checkBackground(rawDataUrl) {
+  const img = await loadImage(rawDataUrl);
+  const c = imageToCanvas(img);
+  const w = c.width, h = c.height;
+  const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+  const isBg = (x, y) => {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] < 30) return true;
+    return d[i + 1] - Math.max(d[i], d[i + 2]) > 60 && d[i + 1] > 140;
+  };
+  // 네 변에서 안쪽으로 훑어 처음 만나는 '배경 아닌 픽셀'의 깊이를 잼.
+  // 액자·카드: 한 변의 거의 모든 줄이 같은 깊이에서 부딪힘. 캐릭터 몸이 아래에 닿는 건 한 변뿐이라 괜찮음.
+  const maxDepth = Math.round(Math.min(w, h) * 0.15);
+  const sides = [
+    (t, k) => [Math.round(w * t), k], (t, k) => [Math.round(w * t), h - 1 - k],
+    (t, k) => [k, Math.round(h * t)], (t, k) => [w - 1 - k, Math.round(h * t)],
+  ];
+  let framed = 0;
+  for (const at of sides) {
+    const depths = [];
+    for (let s = 0; s < 40; s++) {
+      const t = 0.1 + (0.8 * s) / 39;
+      let hit = null;
+      for (let k = 0; k < maxDepth; k++) { const [x, y] = at(t, k); if (!isBg(x, y)) { hit = k; break; } }
+      depths.push(hit);
+    }
+    const hits = depths.filter((v) => v !== null).sort((a, b) => a - b);
+    if (hits.length < 32) continue; // 80% 미만이 부딪힘 → 액자 아님
+    const m = hits[hits.length >> 1];
+    const close = hits.filter((v) => Math.abs(v - m) <= Math.max(4, w * 0.006)).length;
+    if (close >= 28) framed++;
+  }
+  return { ok: framed < 3, framedSides: framed };
+}
+
+/**
+ * 액자·카드 제거 (AI가 지시를 어기고 사각 테두리나 카드 배경을 그린 경우의 안전장치)
+ * 1) 이미지 거의 전체를 두르는 '가는 선' 덩어리(액자 선) 제거
+ * 2) 남은 그림이 사각형 카드처럼 이미지 대부분을 덮으면, 카드 바깥쪽 색을 따라 안으로 벗겨냄
+ */
+export function removeFrame(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  const solid = (p) => d[p * 4 + 3] > 128;
+
+  // 1) 연결 덩어리 중 '이미지 전체를 감싸는데 속이 빈' 것 = 액자 선
+  const label = new Int32Array(w * h);
+  let id = 0;
+  const stack = [];
+  for (let s = 0; s < w * h; s++) {
+    if (!solid(s) || label[s]) continue;
+    id++; label[s] = id; stack.push(s);
+    let cnt = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    const members = [];
+    while (stack.length) {
+      const p = stack.pop(); cnt++; members.push(p);
+      const x = p % w, y = (p / w) | 0;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && solid(p - 1) && !label[p - 1]) { label[p - 1] = id; stack.push(p - 1); }
+      if (x < w - 1 && solid(p + 1) && !label[p + 1]) { label[p + 1] = id; stack.push(p + 1); }
+      if (y > 0 && solid(p - w) && !label[p - w]) { label[p - w] = id; stack.push(p - w); }
+      if (y < h - 1 && solid(p + w) && !label[p + w]) { label[p + w] = id; stack.push(p + w); }
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    const fill = cnt / (bw * bh);
+    if (bw > w * 0.8 && bh > h * 0.8 && fill < 0.18) {
+      for (const p of members) d[p * 4 + 3] = 0; // 속 빈 액자 선 → 삭제
+    }
+  }
+
+  // 2) 카드 벗기기: 불투명 영역이 이미지 거의 전체(88%↑)를 덮고 둘레가 꽉 차 있으면(=카드),
+  //    둘레 색(액자 선 색 + 카드 바탕색)을 여러 깊이에서 뽑아 바깥부터 벗겨냄 (최대 3번)
+  const med = (arr) => arr.sort((m, n) => m - n)[arr.length >> 1];
+  for (let round = 0; round < 3; round++) {
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let p = 0; p < w * h; p++) if (solid(p)) {
+      const x = p % w, y = (p / w) | 0;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0 || (x1 - x0) < w * 0.88 || (y1 - y0) < h * 0.88) break;
+    const ringAt = (k) => {
+      const rs = [], gs = [], bs = []; let total = 0;
+      const take = (x, y) => { total++; const i = (y * w + x) * 4; if (d[i + 3] > 128) { rs.push(d[i]); gs.push(d[i + 1]); bs.push(d[i + 2]); } };
+      for (let x = x0 + k; x <= x1 - k; x += 3) { take(x, y0 + k); take(x, y1 - k); }
+      for (let y = y0 + k; y <= y1 - k; y += 3) { take(x0 + k, y); take(x1 - k, y); }
+      return { fill: rs.length / Math.max(1, total), key: rs.length > 20 ? [med(rs), med(gs), med(bs)] : null };
+    };
+    const outer = ringAt(4);
+    // 캐릭터가 크게 그려져 가장자리에 닿은 경우(둘레 대부분 비어 있음)는 건드리지 않음
+    if (outer.fill < 0.7) break;
+    const keys = [outer.key];
+    for (const k of [Math.round(w * 0.012), Math.round(w * 0.025), Math.round(w * 0.04)]) {
+      const r = ringAt(k);
+      if (r.key && r.fill > 0.7) keys.push(r.key);
+    }
+    // 둘레 색들 + '두 색이 섞인 중간색'(액자 선과 카드 사이 번짐)까지 가까운 정도
+    const segs = [];
+    for (let m = 0; m < keys.length; m++) for (let n = m + 1; n < keys.length; n++) segs.push([keys[m], keys[n]]);
+    const near = (i) => {
+      const c = [d[i], d[i + 1], d[i + 2]];
+      let best = 1e9;
+      for (const k of keys) best = Math.min(best, Math.hypot(c[0] - k[0], c[1] - k[1], c[2] - k[2]));
+      for (const [A, B] of segs) {
+        const ab = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], len2 = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2;
+        if (len2 < 400) continue;
+        const t = Math.max(0, Math.min(1, ((c[0] - A[0]) * ab[0] + (c[1] - A[1]) * ab[1] + (c[2] - A[2]) * ab[2]) / len2));
+        best = Math.min(best, Math.hypot(c[0] - A[0] - t * ab[0], c[1] - A[1] - t * ab[1], c[2] - A[2] - t * ab[2]) + 6);
+      }
+      return best;
+    };
+    const seen = new Uint8Array(w * h), st = [];
+    const push = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return; const p = y * w + x; if (seen[p]) return; seen[p] = 1; st.push(p); };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    let removed = 0;
+    while (st.length) {
+      const p = st.pop(), i = p * 4;
+      const passable = d[i + 3] < 200; // 이미 (반)투명 = 지나갈 수 있음
+      const dist = passable ? 0 : near(i);
+      // 기준을 좁게(30): 검은 액자 옆의 검은 머리·옷은 남김
+      if (passable || dist < 30) {
+        if (d[i + 3] && (dist < 30 || near(i) < 60)) { d[i + 3] = 0; removed++; }
+        const x = p % w, y = (p / w) | 0;
+        push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+      } else if (dist < 55) {
+        d[i + 3] = Math.min(d[i + 3], Math.round(((dist - 30) / 25) * 255));
+      }
+    }
+    if (removed < w * h * 0.01) break;
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
 }
 
 /** 4행×3열 시트 → 12장 원본 조각(dataURL). 배경 제거 후 셀 단위로 자름 */

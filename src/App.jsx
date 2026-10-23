@@ -8,7 +8,7 @@ import Gallery from './components/Gallery.jsx';
 import StickerModal from './components/StickerModal.jsx';
 import { CATEGORIES, STYLES, EMOTIONS, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
-import { prepareUpload, processSticker, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
+import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, downloadZip, shareImages } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
@@ -102,15 +102,25 @@ export default function App() {
     const bgMode = settings.postprocess ? PROVIDERS[settings.provider].bgMode : 'baked';
     const refs = photo ? [{ mime: photo.mime, base64: photo.base64 }] : [];
     if (anchorRef.current) refs.push(anchorRef.current);
-    const prompt = buildStickerPrompt({
-      category: opts.category, style: opts.style, emotion: EMOTIONS[i], bgMode, hasAnchor: !!anchorRef.current,
+    const makePrompt = (fixFrame) => buildStickerPrompt({
+      category: opts.category, style: opts.style, emotion: EMOTIONS[i], bgMode, hasAnchor: !!anchorRef.current, fixFrame,
     });
     patch(i, { status: 'loading', error: null });
     try {
-      const raw = await generateImage({
-        settings, refs, prompt, shape: 'square', signal, meta: { ...opts, index: i },
+      const gen = (fixFrame) => generateImage({
+        settings, refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: i },
         onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
       });
+      let raw = await gen(false);
+      // AI가 액자·카드를 그렸으면 최대 2번 다시 그리게 함 (그래도 남으면 앱이 벗겨냄)
+      if (settings.postprocess && settings.provider !== 'demo') {
+        for (let t = 0; t < 2; t++) {
+          const chk = await checkBackground(raw);
+          if (chk.ok) break;
+          setStage(`${EMOTIONS[i].label}: 배경에 테두리가 생겨 다시 그리는 중`);
+          raw = await gen(true);
+        }
+      }
       const url = await processSticker(raw, { postprocess: settings.postprocess });
       patch(i, { status: 'done', url, raw });
       return raw;

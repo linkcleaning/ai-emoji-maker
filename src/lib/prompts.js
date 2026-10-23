@@ -110,7 +110,8 @@ const SUBJECT_TEXT = {
  */
 function backgroundText(mode) {
   if (mode === 'chroma')
-    return 'BACKGROUND: perfectly flat solid pure chroma-key green (#00FF00) filling the entire canvas, no gradient, no floor, no cast shadow, no scenery. ' +
+    return 'BACKGROUND: perfectly flat solid pure chroma-key green (#00FF00) filling the entire canvas edge to edge — the green must touch all four edges of the image. ' +
+      'No rectangle, card, paper, panel, border line or frame around the image or the character. No gradient, no floor, no cast shadow, no scenery. ' +
       'Do NOT draw any white sticker outline or border around the character (it is added in post-production). ' +
       'Do not use any green color on the character or props (if the subject wears green clothing, render it in navy or beige instead). No glow, halo, outline or soft shadow around the character — the character edge must meet the flat green directly.';
   if (mode === 'transparent')
@@ -119,15 +120,16 @@ function backgroundText(mode) {
 }
 
 const COMMON =
-  'Exactly ONE character in a single sticker, centered, the whole character and all props fully inside the frame with comfortable margin, ' +
+  'Exactly ONE character, centered, the whole character and all props fully inside the image with comfortable margin, ' +
   'no floating bars, lines, frames, banners, buttons, UI elements or empty speech bubbles (only the props described), ' +
   'nothing cropped. Bold readable silhouette that works at small messenger-sticker size. No extra text except the symbols described, ' +
   'no watermark, no signature, no frame, no panel borders.';
 
-export function buildStickerPrompt({ category, style, emotion, bgMode, hasAnchor }) {
+export function buildStickerPrompt({ category, style, emotion, bgMode, hasAnchor, fixFrame }) {
   const pose = category === 'person' ? emotion.person : emotion.pet;
   return [
-    'Create a messenger emoji sticker.',
+    'Create a single character illustration (a cut-out) on a flat green chroma-key background. It will be turned into a chat emoji later by software.',
+    fixFrame ? 'IMPORTANT: the previous attempt wrongly drew a box/card/frame around the picture. Do NOT draw any box, card, rectangle or frame — only the character floating on pure green that reaches every edge.' : '',
     `STYLE: ${STYLE_TEXT[style]}.`,
     `SUBJECT: ${SUBJECT_TEXT[category]}`,
     hasAnchor
@@ -137,7 +139,7 @@ export function buildStickerPrompt({ category, style, emotion, bgMode, hasAnchor
     COMMON,
     backgroundText(bgMode),
     'Square 1:1 composition, crisp, high quality, 4k detail.',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 /** 한 장짜리 4행×3열 시트 프롬프트 (빠름·저렴 모드) */
