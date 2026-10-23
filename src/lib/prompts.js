@@ -143,8 +143,8 @@ export function buildStickerPrompt({ category, style, emotion, bgMode, hasAnchor
 }
 
 /** 한 장짜리 4행×3열 시트 프롬프트 (빠름·저렴 모드) */
-export function buildSheetPrompt({ category, style, bgMode }) {
-  const list = EMOTIONS.map((e, i) => `${i + 1}. ${e.label.split('/')[1] || e.label}: ${category === 'person' ? e.person : e.pet}`).join('\n');
+export function buildSheetPrompt({ category, style, bgMode, emotions = EMOTIONS }) {
+  const list = emotions.map((e, i) => `${i + 1}. ${e.label.split('/')[1] || e.label}: ${category === 'person' ? e.person : e.pet}`).join('\n');
   return [
     'A set of 12 distinct emoji stickers of the SAME character, arranged as a sticker sheet in a strict grid of 3 columns × 4 rows,',
     'equal-sized cells, each sticker centered in its own cell with wide empty gaps between stickers so no two stickers touch.',

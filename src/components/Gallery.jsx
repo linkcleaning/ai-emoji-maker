@@ -4,7 +4,7 @@ export default function Gallery({ stickers, onOpen, onRetry, busy }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {stickers.map((s, i) => (
-        <div key={s.id} className="relative min-w-0">
+        <div key={`${i}-${s.id}`} className="relative min-w-0">
           {s.status === 'done' ? (
             <button
               onClick={() => onOpen(i)}

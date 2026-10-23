@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { EMOTIONS } from '../lib/prompts.js';
 
 const TIPS = [
   '캐릭터 얼굴을 먼저 디자인하고 있어요…',
@@ -10,14 +9,14 @@ const TIPS = [
   '조금만 기다려 주세요, 거의 다 왔어요!',
 ];
 
-export default function ProgressPanel({ done, total, stage, onCancel }) {
+export default function ProgressPanel({ done, total, stage, onCancel, icons = ['😊'] }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 1600);
     return () => clearInterval(t);
   }, []);
   const pct = Math.round((done / total) * 100);
-  const face = EMOTIONS[tick % EMOTIONS.length].icon;
+  const face = icons[tick % icons.length];
 
   return (
     <div className="card p-5">

@@ -322,14 +322,14 @@ export async function demoSticker({ category, style, index }) {
 }
 
 /** AI 응답 흉내: 4행×3열 시트 */
-export async function demoSheet({ category, style }) {
+export async function demoSheet({ category, style, set }) {
   await new Promise((r) => setTimeout(r, 1200));
   const [c, ctx] = newCanvas(768, 1024);
   for (let i = 0; i < 12; i++) {
     ctx.save();
     ctx.translate((i % 3) * 256, Math.floor(i / 3) * 256);
     ctx.scale(0.42, 0.42); ctx.translate(48, 48);
-    drawCharacter(ctx, { category, style, index: i });
+    drawCharacter(ctx, { category, style, index: set?.[i]?.demo ?? i });
     ctx.restore();
   }
   return c.toDataURL('image/png');

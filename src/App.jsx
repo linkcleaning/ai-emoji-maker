@@ -6,10 +6,12 @@ import Uploader from './components/Uploader.jsx';
 import ProgressPanel from './components/ProgressPanel.jsx';
 import Gallery from './components/Gallery.jsx';
 import StickerModal from './components/StickerModal.jsx';
-import { CATEGORIES, STYLES, EMOTIONS, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
+import { CATEGORIES, STYLES, buildStickerPrompt, buildSheetPrompt } from './lib/prompts.js';
+import { packSet, serializeSet, deserializeSet } from './lib/expressions.js';
+import ExpressionPicker, { ExpressionBar } from './components/ExpressionPicker.jsx';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
-import { downloadDataUrl, downloadZip, shareImages } from './lib/share.js';
+import { downloadDataUrl, downloadZip, shareImages, safeName } from './lib/share.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
 // 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
@@ -44,7 +46,16 @@ function saveSettings(s) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch { /* 저장 불가 환경 */ }
 }
 
-const emptyStickers = () => EMOTIONS.map((e) => ({ ...e, status: 'idle', url: null, error: null }));
+const emptyStickers = (set) => set.map((e) => ({ ...e, status: 'idle', url: null, error: null }));
+
+// 표정 구성 저장/불러오기 (이 기기에만)
+const SET_KEY = 'emoji-maker-expressions-v1';
+function loadSet() {
+  try { return deserializeSet(JSON.parse(localStorage.getItem(SET_KEY))) || packSet('basic'); } catch { return packSet('basic'); }
+}
+function storeSet(set) {
+  try { localStorage.setItem(SET_KEY, JSON.stringify(serializeSet(set))); } catch { /* 저장 불가 환경 */ }
+}
 
 export default function App() {
   const [settings, setSettings] = useState(loadSettings);
@@ -52,7 +63,9 @@ export default function App() {
   const [photo, setPhoto] = useState(null);
   const [category, setCategory] = useState('person');
   const [style, setStyle] = useState('3d');
-  const [stickers, setStickers] = useState(emptyStickers);
+  const [expSet, setExpSet] = useState(loadSet);
+  const [showPicker, setShowPicker] = useState(false);
+  const [stickers, setStickers] = useState(() => emptyStickers(loadSet()));
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState('');
   const [viewIdx, setViewIdx] = useState(null);
@@ -61,7 +74,7 @@ export default function App() {
 
   const abortRef = useRef(null);
   const anchorRef = useRef(null); // 일관성 유지를 위한 기준 캐릭터 이미지
-  const optsRef = useRef({ category, style }); // 마지막 생성에 쓴 옵션 (개별 재생성용)
+  const optsRef = useRef({ category, style, set: expSet }); // 마지막 생성에 쓴 옵션 (개별 재생성용)
   const fatalRef = useRef(null); // 이번 실행에서 난 치명적 오류
   const wakeRef = useRef(null);
 
@@ -103,12 +116,12 @@ export default function App() {
     const refs = photo ? [{ mime: photo.mime, base64: photo.base64 }] : [];
     if (anchorRef.current) refs.push(anchorRef.current);
     const makePrompt = (fixFrame) => buildStickerPrompt({
-      category: opts.category, style: opts.style, emotion: EMOTIONS[i], bgMode, hasAnchor: !!anchorRef.current, fixFrame,
+      category: opts.category, style: opts.style, emotion: opts.set[i], bgMode, hasAnchor: !!anchorRef.current, fixFrame,
     });
     patch(i, { status: 'loading', error: null });
     try {
       const gen = (fixFrame) => generateImage({
-        settings, refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: i },
+        settings, refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: opts.set[i].demo ?? i },
         onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
       });
       let raw = await gen(false);
@@ -117,7 +130,7 @@ export default function App() {
         for (let t = 0; t < 2; t++) {
           const chk = await checkBackground(raw);
           if (chk.ok) break;
-          setStage(`${EMOTIONS[i].label}: 배경에 테두리가 생겨 다시 그리는 중`);
+          setStage(`${opts.set[i].label}: 배경에 테두리가 생겨 다시 그리는 중`);
           raw = await gen(true);
         }
       }
@@ -143,9 +156,9 @@ export default function App() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     anchorRef.current = null;
-    optsRef.current = { category, style };
+    optsRef.current = { category, style, set: expSet };
     const opts = optsRef.current;
-    setStickers(emptyStickers());
+    setStickers(emptyStickers(expSet));
     setFatal(null);
     fatalRef.current = null;
     setBusy(true);
@@ -158,7 +171,7 @@ export default function App() {
         const raw = await generateImage({
           settings,
           refs: photo ? [{ mime: photo.mime, base64: photo.base64 }] : [],
-          prompt: buildSheetPrompt({ ...opts, bgMode }),
+          prompt: buildSheetPrompt({ ...opts, bgMode, emotions: opts.set }),
           shape: 'sheet',
           signal: ctrl.signal,
           meta: opts,
@@ -177,7 +190,7 @@ export default function App() {
 
         // 2) 나머지 11종을 기준 캐릭터와 함께 2개씩 동시 생성 (요청 몰림 방지)
         setStage('표정 만드는 중');
-        const rest = EMOTIONS.map((_, i) => i).slice(1);
+        const rest = opts.set.map((_, i) => i).slice(1);
         await runPool(rest, settings.provider === 'demo' ? 3 : 2, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
         if (ctrl.signal.aborted) throw fatalRef.current || new DOMException('Aborted', 'AbortError');
       }
@@ -222,7 +235,7 @@ export default function App() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setBusy(true);
-    setStage(`${EMOTIONS[i].label} 다시 그리는 중`);
+    setStage(`${optsRef.current.set[i].label} 다시 그리는 중`);
     try {
       const raw = await generateOne(i, { signal: ctrl.signal, opts: optsRef.current });
       if (raw && !anchorRef.current) anchorRef.current = await toJpegRef(raw);
@@ -261,7 +274,7 @@ export default function App() {
   const failedCount = stickers.filter((x) => x.status === 'error').length;
 
   // ── 내보내기 ─────────────────────────────
-  const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${s.id}.png`;
+  const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.png`;
   const sendSize = settings.sendSize ?? 200;
   const setSendSize = (v) => { const s = { ...settings, sendSize: v }; setSettings(s); saveSettings(s); };
   // 공유 버튼을 누른 순간 바로 보낼 수 있게(아이폰은 지연되면 공유가 막힘) 미리 줄여둠
@@ -375,6 +388,13 @@ export default function App() {
             </div>
           </div>
 
+          <ExpressionBar
+            set={expSet}
+            disabled={busy}
+            onOpen={() => setShowPicker(true)}
+            onChange={(set) => { setExpSet(set); storeSet(set); if (!hasResults) setStickers(emptyStickers(set)); }}
+          />
+
           <button onClick={start} disabled={busy || (!photo && !isDemo)} className="btn-primary w-full !py-4 !text-base">
             <Wand2 size={19} /> {hasResults ? '새로 만들기' : '이모티콘 12종 만들기'}
           </button>
@@ -402,7 +422,7 @@ export default function App() {
           </section>
         )}
 
-        {busy && <ProgressPanel done={settledCount} total={12} stage={stage} onCancel={cancel} />}
+        {busy && <ProgressPanel done={settledCount} total={12} stage={stage} onCancel={cancel} icons={stickers.map((x) => x.icon)} />}
 
         {/* 결과 갤러리 */}
         {hasResults && (
@@ -464,6 +484,14 @@ export default function App() {
           onSave={() => saveOne(viewIdx)}
           onShare={() => shareOne(viewIdx)}
           onRegenerate={() => { const i = viewIdx; setViewIdx(null); retry(i); }}
+        />
+      )}
+
+      {showPicker && (
+        <ExpressionPicker
+          set={expSet}
+          onClose={() => setShowPicker(false)}
+          onSave={(set) => { setExpSet(set); storeSet(set); if (!hasResults) setStickers(emptyStickers(set)); setShowPicker(false); notify('표정 구성을 바꿨어요. [새로 만들기]를 누르면 적용돼요.'); }}
         />
       )}
 
