@@ -112,7 +112,7 @@ function backgroundText(mode) {
   if (mode === 'chroma')
     return 'BACKGROUND: perfectly flat solid pure chroma-key green (#00FF00) filling the entire canvas, no gradient, no floor, no cast shadow, no scenery. ' +
       'Do NOT draw any white sticker outline or border around the character (it is added in post-production). ' +
-      'Do not use pure bright green anywhere on the character or props.';
+      'Do not use any green color on the character or props (if the subject wears green clothing, render it in navy or beige instead). No glow, halo, outline or soft shadow around the character — the character edge must meet the flat green directly.';
   if (mode === 'transparent')
     return 'BACKGROUND: fully transparent. Do NOT draw any white sticker outline or border (added in post-production). No cast shadow.';
   return 'Die-cut sticker look: thick clean white border following the silhouette, soft subtle drop shadow, on a plain light beige background.';

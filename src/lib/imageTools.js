@@ -72,12 +72,6 @@ export function removeBackground(canvas) {
 
   const key = estimateKey(d, w, h);
   const isGreenKey = key[1] > key[0] + 40 && key[1] > key[2] + 40;
-  const T1 = isGreenKey ? 90 : 38;   // 완전 제거 임계
-  const T2 = isGreenKey ? 150 : 70;  // 반투명 경계 임계
-  const dist = (i) => {
-    const dr = d[i] - key[0], dg = d[i + 1] - key[1], db = d[i + 2] - key[2];
-    return Math.sqrt(dr * dr + dg * dg + db * db);
-  };
 
   const visited = new Uint8Array(w * h);
   const stack = [];
@@ -88,41 +82,58 @@ export function removeBackground(canvas) {
     visited[p] = 1;
     stack.push(p);
   };
-  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
-  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+  const seedEdges = () => {
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+  };
 
-  while (stack.length) {
-    const p = stack.pop();
-    const i = p * 4;
-    const dd = dist(i);
-    if (dd < T1) {
-      d[i + 3] = 0;
+  if (isGreenKey) {
+    // ── 크로마 그린: '초록이 얼마나 우세한가(g - max(r,b))'로 투명도 결정 ──
+    // AI가 캐릭터 둘레에 그리는 옅은 연두빛 번짐(후광)까지 배경으로 처리 → 테두리에 초록 점이 남지 않음
+    const gness = (i) => d[i + 1] - Math.max(d[i], d[i + 2]);
+    const LO = 14, HI = 48; // LO 이하: 캐릭터(불투명), HI 이상: 배경(투명)
+    seedEdges();
+    while (stack.length) {
+      const p = stack.pop();
+      const i = p * 4;
+      const g = gness(i);
+      if (g <= LO) continue; // 캐릭터에 닿음 → 더 들어가지 않음
+      const a = g >= HI ? 0 : (HI - g) / (HI - LO);
+      d[i + 3] = Math.min(d[i + 3], Math.round(a * 255));
+      const m = Math.max(d[i], d[i + 2]);
+      if (d[i + 1] > m) d[i + 1] = m; // 초록 번짐 제거
       const x = p % w, y = (p / w) | 0;
       push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
-    } else if (dd < T2) {
-      d[i + 3] = Math.min(d[i + 3], Math.round(((dd - T1) / (T2 - T1)) * 255));
-      if (isGreenKey) { const m = Math.max(d[i], d[i + 2]); if (d[i + 1] > m) d[i + 1] = m; }
     }
-  }
-  // 팔·꼬리 사이처럼 테두리와 연결되지 않은 '갇힌 배경'도 제거 (크로마 그린일 때만, 확실한 초록만)
-  if (isGreenKey) {
+    // 팔·꼬리 사이처럼 테두리와 이어지지 않은 '갇힌 배경': 확실히 초록인 곳만 제거
     for (let p = 0; p < w * h; p++) {
       const i = p * 4;
       if (d[i + 3] === 0) continue;
-      const dd = dist(i);
-      if (dd < T1 * 0.75) d[i + 3] = 0;
-      else if (dd < T1 * 1.2 && d[i + 1] > d[i] + 60 && d[i + 1] > d[i + 2] + 60) {
-        d[i + 3] = Math.min(d[i + 3], Math.round(((dd - T1 * 0.75) / (T1 * 0.45)) * 255));
-      }
-    }
-  }
-  // 경계 주변 1px 초록 번짐 추가 제거
-  if (isGreenKey) {
-    for (let p = 0; p < w * h; p++) {
-      const i = p * 4;
-      if (d[i + 3] === 0) continue;
+      const g = gness(i);
+      if (g >= 70) d[i + 3] = 0;
+      else if (g > 40) d[i + 3] = Math.min(d[i + 3], Math.round(((70 - g) / 30) * 255));
       const m = Math.max(d[i], d[i + 2]);
-      if (d[i + 1] > m + 20) d[i + 1] = m + 20;
+      if (d[i + 1] > m + 12) d[i + 1] = m + 12; // 남은 가장자리 초록기 제거
+    }
+  } else {
+    // ── 그 밖의 단색 배경(흰색 등): 색 거리로 판단 ──
+    const T1 = 38, T2 = 70;
+    const dist = (i) => {
+      const dr = d[i] - key[0], dg = d[i + 1] - key[1], db = d[i + 2] - key[2];
+      return Math.sqrt(dr * dr + dg * dg + db * db);
+    };
+    seedEdges();
+    while (stack.length) {
+      const p = stack.pop();
+      const i = p * 4;
+      const dd = dist(i);
+      if (dd < T1) {
+        d[i + 3] = 0;
+        const x = p % w, y = (p / w) | 0;
+        push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+      } else if (dd < T2) {
+        d[i + 3] = Math.min(d[i + 3], Math.round(((dd - T1) / (T2 - T1)) * 255));
+      }
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -146,11 +157,72 @@ function contentBox(canvas, alphaMin = 24) {
   return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
+// ── 정확한 거리 변환(EDT): 각 픽셀에서 가장 가까운 '캐릭터' 픽셀까지의 거리 ──
+function edt1d(f, n, d, v, z) {
+  let k = 0; v[0] = 0; z[0] = -Infinity; z[1] = Infinity;
+  for (let q = 1; q < n; q++) {
+    let s;
+    do { const r = v[k]; s = ((f[q] + q * q) - (f[r] + r * r)) / (2 * q - 2 * r); } while (s <= z[k] && --k >= 0);
+    k++; v[k] = q; z[k] = s; z[k + 1] = Infinity;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const r = v[k]; d[q] = (q - r) * (q - r) + f[r]; }
+}
+function distanceField(mask, w, h) {
+  const INF = 1e20, g = new Float64Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = mask[i] ? 0 : INF;
+  const n = Math.max(w, h), f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+  for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) f[y] = g[y * w + x]; edt1d(f, h, d, v, z); for (let y = 0; y < h; y++) g[y * w + x] = d[y]; }
+  for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) f[x] = g[y * w + x]; edt1d(f, w, d, v, z); for (let x = 0; x < w; x++) g[y * w + x] = Math.sqrt(d[x]); }
+  return g;
+}
+
 /**
- * 다이컷 스티커: 실루엣을 원형으로 확장(흰 테두리) + 은은한 그림자, 정사각 투명 PNG로 정렬
+ * 배경 찌꺼기 청소: 덜 지워진 점·티끌(작은 조각)을 없애고 캐릭터 가장자리만 남김
+ * → 흰 테두리가 울퉁불퉁·점선처럼 보이던 문제 해결
+ */
+export function cleanAlpha(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  const solid = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) solid[i] = d[i * 4 + 3] > 128 ? 1 : 0;
+  // 연결된 덩어리별 크기 → 작은 티끌 제거 (하트·물음표·폭죽 조각 같은 소품은 유지)
+  const label = new Int32Array(w * h), sizes = [0], stack = [];
+  let id = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (!solid[i] || label[i]) continue;
+    id++; let cnt = 0; stack.push(i); label[i] = id;
+    while (stack.length) {
+      const p = stack.pop(); cnt++;
+      const x = p % w, y = (p / w) | 0;
+      if (x > 0 && solid[p - 1] && !label[p - 1]) { label[p - 1] = id; stack.push(p - 1); }
+      if (x < w - 1 && solid[p + 1] && !label[p + 1]) { label[p + 1] = id; stack.push(p + 1); }
+      if (y > 0 && solid[p - w] && !label[p - w]) { label[p - w] = id; stack.push(p - w); }
+      if (y < h - 1 && solid[p + w] && !label[p + w]) { label[p + w] = id; stack.push(p + w); }
+    }
+    sizes.push(cnt);
+  }
+  const minSize = Math.max(40, Math.round(w * h * 0.00012));
+  const keep = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) keep[i] = label[i] && sizes[label[i]] >= minSize ? 1 : 0;
+  // 남긴 덩어리에서 2px 넘게 떨어진 반투명 점은 모두 제거
+  const dist = distanceField(keep, w, h);
+  for (let i = 0; i < w * h; i++) {
+    if (keep[i]) continue;
+    if (dist[i] > 2) d[i * 4 + 3] = 0;
+    else if (label[i]) d[i * 4 + 3] = 0; // 작은 덩어리 자체
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+/**
+ * 다이컷 스티커: 캐릭터 둘레로 일정한 두께의 매끈한 흰 테두리 + 은은한 그림자, 정사각 투명 PNG
  */
 export function dieCut(srcCanvas, size = OUTPUT_SIZE) {
-  const box = contentBox(srcCanvas);
+  cleanAlpha(srcCanvas);
+  const box = contentBox(srcCanvas, 128);
   const border = Math.round(size * 0.028);           // 굵은 흰 테두리
   const shadowPad = Math.round(size * 0.035);
   const inner = size - 2 * (border + shadowPad);
@@ -160,35 +232,26 @@ export function dieCut(srcCanvas, size = OUTPUT_SIZE) {
 
   // 1) 캐릭터만 배치
   const art = makeCanvas(size, size);
-  const actx = art.getContext('2d');
+  const actx = art.getContext('2d', { willReadFrequently: true });
   actx.imageSmoothingQuality = 'high';
   actx.drawImage(srcCanvas, box.x, box.y, box.w, box.h, ox, oy, cw, ch);
 
-  // 2) 흰색 실루엣
-  const sil = makeCanvas(size, size);
-  const sctx = sil.getContext('2d');
-  sctx.drawImage(art, 0, 0);
-  sctx.globalCompositeOperation = 'source-in';
-  sctx.fillStyle = '#fff';
-  sctx.fillRect(0, 0, size, size);
-
-  // 3) 실루엣 팽창 → 테두리
+  // 2) 거리 변환으로 정확히 같은 두께의 둥근 테두리 계산 (가장자리는 1px 부드럽게)
+  const ad = actx.getImageData(0, 0, size, size).data;
+  const mask = new Uint8Array(size * size);
+  for (let i = 0; i < size * size; i++) mask[i] = ad[i * 4 + 3] > 110 ? 1 : 0;
+  const dist = distanceField(mask, size, size);
   const sticker = makeCanvas(size, size);
   const tctx = sticker.getContext('2d');
-  const steps = 32;
-  for (const r of [border * 0.5, border]) {
-    for (let k = 0; k < steps; k++) {
-      const a = (k / steps) * Math.PI * 2;
-      tctx.drawImage(sil, Math.cos(a) * r, Math.sin(a) * r);
-    }
+  const bimg = tctx.createImageData(size, size), bd = bimg.data;
+  for (let i = 0; i < size * size; i++) {
+    const a = Math.max(0, Math.min(1, border + 0.5 - dist[i]));
+    if (a > 0) { bd[i * 4] = 255; bd[i * 4 + 1] = 255; bd[i * 4 + 2] = 255; bd[i * 4 + 3] = Math.round(a * 255); }
   }
-  // 테두리 가장자리 알파를 단단하게 (반투명 얼룩 제거)
-  const td = tctx.getImageData(0, 0, size, size);
-  for (let i = 3; i < td.data.length; i += 4) td.data[i] = td.data[i] > 90 ? 255 : Math.round(td.data[i] * 1.6);
-  tctx.putImageData(td, 0, 0);
+  tctx.putImageData(bimg, 0, 0);
   tctx.drawImage(art, 0, 0);
 
-  // 4) 그림자와 합성
+  // 3) 그림자와 합성
   const out = makeCanvas(size, size);
   const octx = out.getContext('2d');
   octx.shadowColor = 'rgba(62, 44, 34, 0.28)';
