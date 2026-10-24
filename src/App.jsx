@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Wand2, Share2, LayoutGrid, Info } from 'lucide-react';
+import { Wand2, Share2, LayoutGrid, Info, Camera } from 'lucide-react';
 import Header from './components/Header.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import Uploader from './components/Uploader.jsx';
@@ -137,9 +137,20 @@ export default function App() {
 
   const patch = (i, obj) => setStickers((arr) => arr.map((s, k) => (k === i ? { ...s, ...obj } : s)));
 
+  /** 다음 이모티콘: 지난 결과를 비우고 맨 위 사진 올리기로 */
+  const newRound = () => {
+    setViewIdx(null); setFatal(null); setDrawing(false);
+    setStickers(emptyStickers(expSet));
+    setPhoto(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const onFile = async (file) => {
     try {
-      setPhoto(await prepareUpload(file));
+      const next = await prepareUpload(file);
+      setPhoto(next);
+      // 새 사진을 고르면 지난 결과는 정리 → 바로 [이모티콘 12종 만들기]
+      if (!busy) { setStickers(emptyStickers(expSet)); setViewIdx(null); setFatal(null); }
     } catch (e) {
       notify(e.message);
     }
@@ -525,6 +536,11 @@ export default function App() {
               <p className="text-[11px] text-cocoa-400 mt-3 flex items-center gap-1">
                 <Info size={12} /> 스티커를 누르면 하나씩 크게 보고 카톡으로 바로 보낼 수 있어요.
               </p>
+            )}
+            {!busy && !drawing && doneCount > 0 && (
+              <button onClick={newRound} className="btn-ghost w-full mt-3 !py-3.5 !border-2 !border-dashed !border-peach-300">
+                <Camera size={17} /> 다른 사진으로 새 이모티콘 만들기
+              </button>
             )}
           </section>
         )}
