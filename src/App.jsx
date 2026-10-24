@@ -479,7 +479,9 @@ export default function App() {
             <Wand2 size={19} /> {hasResults ? '새로 만들기' : '이모티콘 12종 만들기'}
           </button>
           <p className="text-[11px] text-center text-cocoa-400 -mt-2">
-            {isServer && me
+            {isServer && adminOn
+              ? <>👑 관리자 · <b className="text-cocoa-600">무제한</b> (충전 필요 없음)</>
+              : isServer && me
               ? <>오늘 무료 <b className="text-cocoa-600">{me.freeLeft}/{me.freePerDay}팩</b> 남음{me.credit > 0 && <> · 충전 <b className="text-cocoa-600">{me.credit}팩</b></>} · 내 코드 <span className="font-mono">{me.code}</span></>
               : <>{PROVIDERS[settings.provider].label}{isDemo && !photo ? ' · 사진 없이도 체험 가능' : ''} · {settings.mode === 'individual' ? '개별 12장 생성' : '시트 1장 생성'}</>}
           </p>

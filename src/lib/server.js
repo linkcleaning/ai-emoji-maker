@@ -59,15 +59,23 @@ export const fetchMe = () => call('/api/me', { method: 'POST', body: { deviceId:
 
 /** 팩 시작: 성공하면 {ok:true, token,...}, 한도면 {ok:false, reason, code, payInfo} */
 export async function startPack() {
-  const r = await call('/api/pack/start', { method: 'POST', body: { deviceId: getDeviceId() } });
+  const pw = getAdminPw();
+  const r = await call('/api/pack/start', { method: 'POST', body: { deviceId: getDeviceId() }, ...(pw ? { headers: { 'x-admin-password': pw } } : {}) });
   if (r.status === 402 || r.ok) return r.data;
   throw new Error(r.data?.message || '서버에 연결하지 못했어요. 잠시 후 다시 해주세요.');
 }
 
 // ── 관리자 ──
 const ADMIN_KEY = 'emoji-maker-admin';
-export const getAdminPw = () => { try { return sessionStorage.getItem(ADMIN_KEY) || ''; } catch { return ''; } };
-export const setAdminPw = (pw) => { try { sessionStorage.setItem(ADMIN_KEY, pw); } catch { /* ignore */ } };
+// 사장님 휴대폰에서는 한 번 들어가면 계속 관리자(무제한)로 유지. [이 기기에서 관리자 해제]로 지움
+export const getAdminPw = () => {
+  try {
+    const old = sessionStorage.getItem(ADMIN_KEY);
+    if (old && !localStorage.getItem(ADMIN_KEY)) { localStorage.setItem(ADMIN_KEY, old); sessionStorage.removeItem(ADMIN_KEY); }
+    return localStorage.getItem(ADMIN_KEY) || '';
+  } catch { return ''; }
+};
+export const setAdminPw = (pw) => { try { if (pw) localStorage.setItem(ADMIN_KEY, pw); else localStorage.removeItem(ADMIN_KEY); } catch { /* ignore */ } };
 
 const admin = (path, opts = {}) => call(`/api/admin/${path}`, { ...opts, headers: { 'x-admin-password': opts.pw ?? getAdminPw() } });
 export const adminStats = (pw) => admin('stats', { pw });

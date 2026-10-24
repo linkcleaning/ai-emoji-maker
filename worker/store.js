@@ -98,6 +98,14 @@ export function createStore(sql) {
     return { ok: true, kind, token, calls: cfg.callsPerPack, ...status(code, now) };
   };
 
+  /** 관리자 팩: 무료·충전 횟수와 하루 한도에서 빼지 않고 토큰만 발급 (AI 호출 비용은 그대로 집계) */
+  const startAdminPack = ({ code, token, now = Date.now() }) => {
+    const cfg = getConfig();
+    sql(`DELETE FROM tokens WHERE expires < ?`, now);
+    sql(`INSERT INTO tokens (token, code, remaining, expires) VALUES (?, ?, ?, ?)`, token, code, cfg.callsPerPack, now + TOKEN_HOURS * 3600 * 1000);
+    return { ok: true, kind: 'admin', token, calls: cfg.callsPerPack, ...status(code, now) };
+  };
+
   /** AI 호출 1회 사용 (토큰의 남은 횟수 차감). 실패하면 refund로 되돌림 */
   const useCall = (token, now = Date.now()) => {
     const r = sql(`UPDATE tokens SET remaining = remaining - 1 WHERE token = ? AND remaining > 0 AND expires > ? RETURNING remaining, code`, token, now);
@@ -136,5 +144,5 @@ export function createStore(sql) {
   };
   const adminFail = (now = Date.now()) => { sql(`INSERT INTO admin_fail (at) VALUES (?)`, now); };
 
-  return { getConfig, setConfig, status, startPack, useCall, refundCall, addCredit, stats, adminLocked, adminFail };
+  return { getConfig, setConfig, status, startPack, startAdminPack, useCall, refundCall, addCredit, stats, adminLocked, adminFail };
 }

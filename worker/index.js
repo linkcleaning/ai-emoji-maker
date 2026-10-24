@@ -20,6 +20,7 @@ export class Store extends DurableObject {
   }
   status(code) { return this.s.status(code); }
   startPack(args) { return this.s.startPack(args); }
+  startAdminPack(args) { return this.s.startAdminPack(args); }
   useCall(token) { return this.s.useCall(token); }
   refundCall(token) { return this.s.refundCall(token); }
   addCredit(code, packs, memo) { return this.s.addCredit(code, packs, memo); }
@@ -88,6 +89,14 @@ export async function handleApi(req, env) {
     if (!validDevice(deviceId)) return json({ error: 'bad_device' }, 400);
     const code = await codeOf(deviceId);
     const ip = req.headers.get('cf-connecting-ip') || 'unknown';
+    // 관리자(사장님)는 무제한: 비밀번호가 맞으면 횟수 차감 없이 토큰 발급
+    const adminPw = req.headers.get('x-admin-password');
+    if (adminPw && env.ADMIN_PASSWORD) {
+      if (!(await store.adminLocked()) && safeEqual(adminPw, env.ADMIN_PASSWORD)) {
+        return json(await store.startAdminPack({ code, token: randomToken() }));
+      }
+      await store.adminFail(); // 틀린 비밀번호면 일반 손님처럼 처리
+    }
     const r = await store.startPack({ code, ip, token: randomToken() });
     return json(r, r.ok ? 200 : 402);
   }

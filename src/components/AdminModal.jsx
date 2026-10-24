@@ -159,6 +159,13 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
               <button onClick={onOpenSettings} className="btn-ghost w-full">⚙️ 고급 설정 (AI 엔진·생성 방식·배경 처리)</button>
               <p className="text-[11px] text-cocoa-400 mt-1.5 text-center">손님 화면에는 안 보이는 설정이에요. 이 기기에서만 적용돼요.</p>
             </section>
+
+            <section className="rounded-2xl bg-cream-100 p-3 text-xs text-cocoa-600 leading-relaxed">
+              👑 이 기기는 <b>관리자(무제한)</b>로 기억돼요. 이모티콘을 만들어도 무료 횟수·충전이 줄지 않아요. (AI 비용은 위 예상 비용에 포함)
+              <button onClick={() => { setAdminPw(''); setAuthed(false); setPw(''); notify('이 기기에서 관리자를 해제했어요.'); onClose(); }} className="block mt-2 text-peach-600 font-bold underline underline-offset-2">
+                이 기기에서 관리자 해제
+              </button>
+            </section>
           </div>
         )}
       </div>
