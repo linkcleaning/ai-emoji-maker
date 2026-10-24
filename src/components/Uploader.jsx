@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react';
-import { Camera, ImagePlus, RefreshCw } from 'lucide-react';
+import { ImagePlus, RefreshCw } from 'lucide-react';
 
 export default function Uploader({ photo, onFile, disabled }) {
   const fileRef = useRef(null);
-  const camRef = useRef(null);
   const [drag, setDrag] = useState(false);
 
   const handle = (files) => {
@@ -21,7 +20,6 @@ export default function Uploader({ photo, onFile, disabled }) {
       }`}
     >
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { handle(e.target.files); e.target.value = ''; }} />
-      <input ref={camRef} type="file" accept="image/*" capture="user" hidden onChange={(e) => { handle(e.target.files); e.target.value = ''; }} />
 
       {photo ? (
         <div className="flex items-center gap-4 p-4">
@@ -39,14 +37,9 @@ export default function Uploader({ photo, onFile, disabled }) {
           <div className="mx-auto mb-3 w-16 h-16 rounded-2xl bg-white shadow-sticker grid place-items-center text-3xl bob">📸</div>
           <p className="font-display text-lg mb-1">사진을 올려주세요</p>
           <p className="text-xs text-cocoa-400 mb-4">내 얼굴 · 우리 집 고양이 · 강아지 사진<br className="sm:hidden" /> (드래그 앤 드롭도 돼요)</p>
-          <div className="flex gap-2 justify-center">
-            <button disabled={disabled} onClick={() => fileRef.current.click()} className="btn-primary">
-              <ImagePlus size={17} /> 사진 선택
-            </button>
-            <button disabled={disabled} onClick={() => camRef.current.click()} className="btn-ghost">
-              <Camera size={17} /> 촬영
-            </button>
-          </div>
+          <button disabled={disabled} onClick={() => fileRef.current.click()} className="btn-primary !px-6">
+            <ImagePlus size={17} /> 사진 선택 · 촬영
+          </button>
         </div>
       )}
     </div>
