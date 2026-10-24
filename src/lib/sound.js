@@ -17,6 +17,7 @@ export const isMuted = () => muted;
 export function setMuted(m) {
   muted = m;
   try { localStorage.setItem(KEY, m ? 'off' : 'on'); } catch { /* 저장 불가해도 무시 */ }
+  if (!m) unlock(); // 소리 켜기 버튼 누른 순간 = 터치 → 바로 깨움
   if (master) master.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, 0.03);
   listeners.forEach((f) => f(m));
 }
@@ -35,18 +36,39 @@ function ac() {
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  if (ctx.state !== 'running') ctx.resume().catch(() => {}); // suspended·interrupted(iOS) 모두 깨움
   return ctx;
+}
+
+/** 아이폰: 무음 스위치가 켜져 있어도 효과음이 나도록 '재생' 모드로 전환 */
+let silentEl = null;
+function iosPlayback() {
+  try { if (navigator.audioSession) { navigator.audioSession.type = 'playback'; return; } } catch { /* 미지원 */ }
+  // 옛 iOS: 소리 없는 <audio>를 한 번 재생하면 재생 모드로 바뀜
+  if (silentEl) return;
+  try {
+    const n = 4410, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    silentEl = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+    silentEl.setAttribute('playsinline', ''); silentEl.volume = 0.01;
+    silentEl.play().catch(() => { silentEl = null; });
+  } catch { silentEl = null; }
 }
 const ready = () => !muted && ctx && ctx.state === 'running';
 
 export function unlock() {
+  if (muted) return;
+  iosPlayback();
   const c = ac(); if (!c) return;
   const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(master); s.start(0); // iOS 깨우기
 }
 if (typeof window !== 'undefined') {
   const h = () => unlock();
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach((e) => window.addEventListener(e, h, { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
 }
 
 function noise(dur) { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = dur > 1; return s; }
@@ -106,12 +128,12 @@ export function whoosh() {
 }
 
 /** 관 속 또르륵 */
-export function tick() {
+export function tick(vol = 0.025) {
   if (!ready()) return;
   const t = ctx.currentTime;
   const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 900 + Math.random() * 300;
   const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 3;
-  const g = ctx.createGain(); env(g, t, 0.025, 0.001, 0.025);
+  const g = ctx.createGain(); env(g, t, vol, 0.001, 0.025);
   o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 0.04);
 }
 
