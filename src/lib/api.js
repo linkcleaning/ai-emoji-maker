@@ -129,7 +129,8 @@ let smallOutputUnsupported = false;
 async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', signal, server, imageSize }) {
   // server: { token } → 우리 서버(/api/generate)를 거쳐 사장님 키로 호출
   const url = server ? '/api/generate' : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const authHeaders = server ? { 'x-pack-token': server.token, 'x-model': model } : { 'x-goog-api-key': apiKey };
+  // 서버 이용: 관리자 기기에서 모델을 직접 골랐을 때만 보냄 (아니면 관리자 화면의 '손님 AI 모델'을 따름)
+  const authHeaders = server ? { 'x-pack-token': server.token, ...(model ? { 'x-model': model } : {}) } : { 'x-goog-api-key': apiKey };
   const parts = [
     ...refs.map((r) => ({ inlineData: { mimeType: r.mime, data: r.base64 } })),
     { text: prompt },
@@ -215,11 +216,11 @@ const sleep = (ms, signal) => new Promise((resolve, reject) => {
  * onWait(sec, err): 재시도 대기 중 화면에 알릴 때 사용
  */
 export async function generateImage(args) {
-  const { signal, onWait } = args;
+  const { signal, onWait, hedgeMs } = args;
   const maxTries = 4;
   for (let attempt = 1; ; attempt++) {
     try {
-      return await generateOnce(args);
+      return await (hedgeMs && args.settings.provider !== 'demo' ? hedged(args, hedgeMs) : generateOnce(args));
     } catch (e) {
       if (e?.name === 'AbortError' || signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       if (!e?.retryable || attempt >= maxTries) throw e;
@@ -229,6 +230,39 @@ export async function generateImage(args) {
       await sleep(wait, signal);
     }
   }
+}
+
+/**
+ * 느린 요청 보험(헤지): AI 서버가 가끔 한 건만 유난히 오래 붙잡고 있을 때가 있음.
+ * ms 안에 답이 없으면 똑같은 요청을 하나 더 보내고, 먼저 온 쪽을 쓰고 나머지는 취소.
+ * (빠를 때는 1번만 호출 → 추가 비용 없음)
+ */
+function hedged(args, ms) {
+  return new Promise((resolve, reject) => {
+    const outer = args.signal;
+    const ctrls = [];
+    let pending = 0, firstErr = null, done = false, timer = null;
+    const finish = (fn, v) => { if (done) return; done = true; clearTimeout(timer); ctrls.forEach((c) => c.abort()); fn(v); };
+    const launch = () => {
+      if (done || outer?.aborted) return;
+      const c = new AbortController();
+      ctrls.push(c);
+      outer?.addEventListener('abort', () => c.abort(), { once: true });
+      pending++;
+      generateOnce({ ...args, signal: c.signal }).then(
+        (v) => finish(resolve, v),
+        (e) => {
+          pending--;
+          if (done) return;
+          if (outer?.aborted || e?.fatal) return finish(reject, e);
+          firstErr = firstErr || e;
+          if (!pending) finish(reject, firstErr); // 둘 다(또는 보험 전 첫 요청이) 실패 → 바깥 재시도로
+        },
+      );
+    };
+    launch();
+    timer = setTimeout(launch, ms);
+  });
 }
 
 /** 통합 호출 1회 — shape: 'square' | 'sheet' */
@@ -241,7 +275,7 @@ async function generateOnce({ settings, refs, prompt, shape = 'square', signal, 
   if (p === 'server') {
     if (!settings.packToken) throw makeError('[새로 만들기]로 새 팩을 시작해 주세요.', { fatal: true, short: '팩 없음' });
     return generateGemini({
-      model: settings.serverModel || PROVIDERS.server.models[0].id, refs, prompt,
+      model: settings.serverModel || '', refs, prompt,
       aspect: shape === 'sheet' ? '3:4' : '1:1', signal, server: { token: settings.packToken },
       imageSize: shape === 'sheet' ? undefined : '512',
     });

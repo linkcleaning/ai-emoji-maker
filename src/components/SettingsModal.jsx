@@ -37,8 +37,9 @@ export default function SettingsModal({ settings, onSave, onClose, serverInfo, o
               API 키 없이 바로 만들어요. <b>하루 {serverInfo?.freePerDay ?? 2}팩 무료</b>이고, 더 만들려면 입금 후 이용 코드를 알려주시면 풀어드려요.
             </p>
             <label className="label" htmlFor="model">모델</label>
-            <select id="model" className="input mb-4" value={s.serverModel || prov.models[0].id} onChange={(e) => set('serverModel', e.target.value)}>
-              {prov.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            <select id="model" className="input mb-4" value={s.serverModel || ''} onChange={(e) => set('serverModel', e.target.value)}>
+              <option value="">관리자 화면 설정 따르기 (손님과 같음)</option>
+              {prov.models.map((m) => <option key={m.id} value={m.id}>이 기기만: {m.label}</option>)}
             </select>
           </>
         ) : prov.noKey ? (

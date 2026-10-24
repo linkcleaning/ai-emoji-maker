@@ -21,6 +21,7 @@ export class Store extends DurableObject {
   status(code) { return this.s.status(code); }
   startPack(args) { return this.s.startPack(args); }
   startAdminPack(args) { return this.s.startAdminPack(args); }
+  recordTiming(ms) { return this.s.recordTiming(ms); }
   useCall(token) { return this.s.useCall(token); }
   refundCall(token) { return this.s.refundCall(token); }
   addCredit(code, packs, memo) { return this.s.addCredit(code, packs, memo); }
@@ -104,13 +105,17 @@ export async function handleApi(req, env) {
   // AI 이미지 생성 중계 (본문은 손대지 않고 그대로 Gemini로 전달 → 서버 부담 최소)
   if (path === '/api/generate' && req.method === 'POST') {
     const token = req.headers.get('x-pack-token') || '';
-    const model = ALLOWED_MODELS.includes(req.headers.get('x-model')) ? req.headers.get('x-model') : DEFAULT_MODEL;
+    // 모델: 관리자 기기에서 직접 고른 값 > 관리자 화면의 '손님 AI 모델' > 기본
+    const hdr = req.headers.get('x-model');
+    let model = ALLOWED_MODELS.includes(hdr) ? hdr : null;
+    if (!model) { const m = (await store.getConfig()).model; model = ALLOWED_MODELS.includes(m) ? m : DEFAULT_MODEL; }
     const len = Number(req.headers.get('content-length') || 0);
     if (len > MAX_BODY) return json({ error: { code: 413, message: '사진이 너무 커요.' } }, 413);
     if (!/^[a-f0-9]{48}$/.test(token)) return json({ error: { code: 403, message: 'pack_token' } }, 403);
     const use = await store.useCall(token);
     if (!use.ok) return json({ error: { code: 403, message: 'pack_token' } }, 403);
     let res;
+    const t0 = Date.now();
     try {
       res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
@@ -122,6 +127,7 @@ export async function handleApi(req, env) {
       return json({ error: { code: 502, message: 'AI 서버에 연결하지 못했어요.' } }, 502);
     }
     if (!res.ok) await store.refundCall(token); // 실패한 호출은 횟수에서 빼지 않음
+    else await store.recordTiming(Date.now() - t0);
     return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-calls-left': String(use.ok ? use.remaining : 0) } });
   }
 

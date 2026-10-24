@@ -180,9 +180,9 @@ function edt1d(f, n, d, v, z) {
   for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const r = v[k]; d[q] = (q - r) * (q - r) + f[r]; }
 }
 function distanceField(mask, w, h) {
-  const INF = 1e20, g = new Float64Array(w * h);
+  const INF = 1e20, g = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) g[i] = mask[i] ? 0 : INF;
-  const n = Math.max(w, h), f = new Float64Array(n), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);
+  const n = Math.max(w, h), f = new Float32Array(n), d = new Float32Array(n), v = new Int32Array(n), z = new Float32Array(n + 1);
   for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) f[y] = g[y * w + x]; edt1d(f, h, d, v, z); for (let y = 0; y < h; y++) g[y * w + x] = d[y]; }
   for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) f[x] = g[y * w + x]; edt1d(f, w, d, v, z); for (let x = 0; x < w; x++) g[y * w + x] = Math.sqrt(d[x]); }
   return g;
@@ -523,8 +523,9 @@ export async function sliceSheet(rawDataUrl, cols = 3, rows = 4) {
   return pieces;
 }
 
-export function pieceToSticker(pieceCanvas, postprocess = true) {
-  return (postprocess ? dieCut(pieceCanvas) : fitSquare(pieceCanvas)).toDataURL('image/png');
+export function pieceToSticker(pieceCanvas, postprocess = true, size = 512) {
+  // 시트 조각은 원래 300px 정도라 768로 키워 봐야 선명해지지 않음 → 512로 (처리 시간 절반 이하)
+  return (postprocess ? dieCut(pieceCanvas, size) : fitSquare(pieceCanvas, size)).toDataURL('image/png');
 }
 
 /** 12장 → 샘플처럼 베이지 배경 스티커 시트 한 장 */

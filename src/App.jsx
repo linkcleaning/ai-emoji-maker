@@ -168,6 +168,7 @@ export default function App() {
     try {
       const gen = (fixFrame) => generateImage({
         settings: runSettings(), refs, prompt: makePrompt(fixFrame), shape: 'square', signal, meta: { ...opts, index: opts.set[i].demo ?? i },
+        hedgeMs: i === 0 && !anchorRef.current ? 30000 : 0, // 기준 캐릭터는 모두가 기다리므로 보험 요청
         onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
       });
       let raw = await gen(false);
@@ -221,6 +222,7 @@ export default function App() {
     fatalRef.current = null;
     setDrawing(true);
     setBusy(true);
+    const t0 = Date.now();
 
     try {
       if (settings.mode === 'sheet') {
@@ -235,11 +237,17 @@ export default function App() {
           signal: ctrl.signal,
           meta: opts,
           onWait: (sec, e) => setStage(`${e.short || '잠시 대기'} · ${sec}초 뒤 자동 재시도`),
+          hedgeMs: 35000, // 35초 넘게 답이 없으면 보험 요청 1건 더
         });
-        anchorRef.current = await toJpegRef(raw);
         setStage('스티커 오려내는 중');
         const pieces = await sliceSheet(raw, 3, 4);
-        setStickers((arr) => arr.map((s, i) => ({ ...s, status: 'done', url: pieceToSticker(pieces[i], settings.postprocess) })));
+        // 한 장씩 오려서 바로 보여줌 (사이사이 화면이 멈추지 않게 숨 돌리기)
+        for (let i = 0; i < pieces.length; i++) {
+          await new Promise((r) => setTimeout(r, 0));
+          const url = pieceToSticker(pieces[i], settings.postprocess);
+          patch(i, { status: 'done', url });
+        }
+        anchorRef.current = await toJpegRef(raw);
       } else {
         // 1) 기준 캐릭터(첫 스티커) — 실패 시 1회 재시도
         setStage('캐릭터 디자인 중');
@@ -247,16 +255,17 @@ export default function App() {
         if (!raw0) raw0 = await generateOne(0, { signal: ctrl.signal, opts });
         if (raw0) anchorRef.current = await toJpegRef(raw0);
 
-        // 2) 나머지 11종을 기준 캐릭터와 함께 2개씩 동시 생성 (요청 몰림 방지)
+        // 2) 나머지 11종을 기준 캐릭터와 함께 한꺼번에 동시 생성 (분당 제한에 걸리면 자동 재시도)
         setStage('표정 만드는 중');
         const rest = opts.set.map((_, i) => i).slice(1);
-        await runPool(rest, settings.provider === 'demo' ? 3 : 6, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
+        await runPool(rest, settings.provider === 'demo' ? 3 : 11, (i) => generateOne(i, { signal: ctrl.signal, opts }), ctrl.signal);
         if (ctrl.signal.aborted) throw fatalRef.current || new DOMException('Aborted', 'AbortError');
       }
       setStage('완성!');
       setStickers((arr) => {
         const failed = arr.filter((x) => x.status === 'error').length;
-        notify(failed ? `${12 - failed}장 완성, ${failed}장은 실패했어요. [실패한 것만 다시]를 눌러주세요.` : '이모티콘 팩이 완성됐어요 🎉');
+        const sec = Math.round((Date.now() - t0) / 1000);
+        notify(failed ? `${12 - failed}장 완성, ${failed}장은 실패했어요. [실패한 것만 다시]를 눌러주세요.` : `이모티콘 팩이 완성됐어요 🎉 (${sec}초)`);
         return arr;
       });
     } catch (err) {

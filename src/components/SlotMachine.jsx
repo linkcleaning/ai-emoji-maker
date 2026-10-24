@@ -36,7 +36,7 @@ export default function SlotMachine({ icons, doneFlags, busy, onSettled, onCount
     const id = setInterval(() => {
       const s = st.current;
       const now = Date.now();
-      if (s.queue.length && now - s.last >= (s.queue.length > 2 ? 260 : 600)) {
+      if (s.queue.length && now - s.last >= (s.queue.length > 2 ? 170 : 450)) {
         const i = s.queue.shift();
         s.last = now;
         s.shown = [...(s.shown || []), i];
@@ -61,7 +61,7 @@ export default function SlotMachine({ icons, doneFlags, busy, onSettled, onCount
     if (!allIn || st.current.settled) return undefined;
     const s = st.current;
     if (!s.cheered && shown.length) { s.cheered = true; sfx.fanfare(); }
-    const t = setTimeout(() => { s.settled = true; cbs.current.onSettled?.(); }, 1800);
+    const t = setTimeout(() => { s.settled = true; cbs.current.onSettled?.(); }, 1300);
     return () => clearTimeout(t);
   }, [allIn, shown.length]);
 

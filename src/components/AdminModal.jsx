@@ -74,6 +74,12 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
                 <p className="text-[11px] font-bold text-cocoa-400">예상 AI 비용(오늘 · 호출 {data.calls ?? 0}회)</p>
                 <p className="text-2xl font-bold tabular-nums">약 {((data.calls ?? 0) * 95).toLocaleString()}<span className="text-sm text-cocoa-400">원</span></p>
               </div>
+              <div className="col-span-2 rounded-2xl bg-cream-100 p-3">
+                <p className="text-[11px] font-bold text-cocoa-400">AI가 한 번 그리는 데 걸린 시간 (오늘)</p>
+                <p className="text-lg font-bold tabular-nums">
+                  {data.timing ? <>평균 {data.timing.avg}초 <span className="text-sm text-cocoa-400">· 가장 느림 {data.timing.max}초 · {data.timing.n}회</span></> : <span className="text-sm text-cocoa-400">아직 기록 없음</span>}
+                </p>
+              </div>
             </div>
 
             {/* 충전 */}
@@ -148,6 +154,11 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
                     </label>
                   ))}
                 </div>
+                <label className="label" htmlFor="srvmodel">손님 AI 모델 (모든 손님에게 적용)</label>
+                <select id="srvmodel" className="input mb-2" value={cfg.model || 'gemini-3.1-flash-image'} onChange={(e) => setCfg({ ...cfg, model: e.target.value })}>
+                  <option value="gemini-3.1-flash-image">나노바나나 2 — 기본 (그림 품질 우선)</option>
+                  <option value="gemini-3.1-flash-lite-image">나노바나나 2 라이트 — 더 빠르고 저렴</option>
+                </select>
                 <label className="label" htmlFor="payinfo">입금 안내 (한도 도달 시 손님에게 보여요)</label>
                 <textarea id="payinfo" rows={4} className="input mb-2 resize-none" value={cfg.payInfo} onChange={(e) => setCfg({ ...cfg, payInfo: e.target.value })}
                   placeholder={'예)\n1팩 1,000원 / 3팩 2,500원\n카카오뱅크 3333-00-0000000 (예금주)\n입금자명에 이용 코드를 적어주세요'} />
