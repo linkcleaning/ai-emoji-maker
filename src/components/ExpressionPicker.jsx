@@ -2,17 +2,34 @@ import { useState } from 'react';
 import { X, RotateCw } from 'lucide-react';
 import { LIBRARY_GROUPS, PACKS, packSet, customExpression, matchPack } from '../lib/expressions.js';
 
-// 기본 12표정은 실제 예시 그림이 있음 (스타일별)
-const SAMPLE_IDS = new Set(['hello', 'love', 'fighting', 'panic', 'angry', 'sad', 'tired', 'question', 'party', 'sleep', 'cool', 'ok']);
+// 실제 예시 그림이 있는 표정 (스타일별). 없으면 아이콘으로 보여줌
+const BASIC_IDS = ['hello', 'love', 'fighting', 'panic', 'angry', 'sad', 'tired', 'question', 'party', 'sleep', 'cool', 'ok'];
+const SAMPLES = {
+  '3d': new Set([
+    ...BASIC_IDS,
+    'jealous', 'good_morning', 'good_night', 'hug_me', 'shy', 'finger_heart', 'kiss', 'miss_you',
+    'commute', 'coffee', 'yes_sir', 'thanks_bow', 'sorry_bow', 'report', 'lunch', 'overtime', 'payday', 'leave_work', 'headache',
+    'lc_booking', 'lc_go', 'lc_arrive', 'lc_working', 'lc_sparkle', 'lc_done', 'lc_mold', 'lc_dust', 'lc_check', 'lc_movein', 'lc_thanks', 'lc_again',
+  ]),
+  '2d': new Set(BASIC_IDS),
+};
+// 팩 전용 그림: 기본 팩과 같은 표정이라도 그 팩을 고르면 그 팩 캐릭터로 보여줌 (팩 안에서 그림이 섞이지 않게)
+const PACK_SAMPLES = {
+  '3d': { love: ['love', 'sad', 'angry', 'ok'], office: ['fighting'] },
+};
+const sampleSrc = (id, style, pack) => {
+  if (pack && PACK_SAMPLES[style]?.[pack]?.includes(id)) return `./samples/${style}/${pack}/${id}.webp`;
+  return (SAMPLES[style] || SAMPLES['3d']).has(id) ? `./samples/${style}/${id}.webp` : null;
+};
 
 /** 표정 미리보기 한 칸: 예시 그림(있으면) 또는 아이콘 + 이름 */
-export function ExpressionThumb({ item, style = '3d', small = false }) {
-  const hasSample = SAMPLE_IDS.has(item.id);
+export function ExpressionThumb({ item, style = '3d', small = false, pack = null }) {
+  const src = sampleSrc(item.id, style, pack);
   return (
     <span className="block min-w-0">
       <span className={`grid place-items-center aspect-square rounded-xl bg-white ${small ? '' : 'border border-cream-200'} overflow-hidden`}>
-        {hasSample
-          ? <img src={`./samples/${style}/${item.id}.webp`} alt="" loading="lazy" className="w-full h-full object-contain p-0.5" draggable={false} />
+        {src
+          ? <img src={src} alt="" loading="lazy" className="w-full h-full object-contain p-0.5" draggable={false} />
           : <span className={small ? 'text-lg' : 'text-[22px]'} aria-hidden>{item.icon}</span>}
       </span>
       <span className="block mt-0.5 text-[9.5px] leading-tight font-bold text-cocoa-600 truncate text-center">{item.label.split('/')[0]}</span>
@@ -56,7 +73,7 @@ export function ExpressionBar({ set, onChange, onOpen, disabled, style = '3d' })
         className="mt-2.5 w-full grid grid-cols-6 gap-1.5 rounded-2xl bg-cream-50 p-2 text-left disabled:opacity-60"
         aria-label="표정 12개 미리보기 — 눌러서 바꾸기"
       >
-        {set.map((x, i) => <ExpressionThumb key={`${i}-${x.id}`} item={x} style={style} small />)}
+        {set.map((x, i) => <ExpressionThumb key={`${i}-${x.id}`} item={x} style={style} pack={current} small />)}
       </button>
     </div>
   );
@@ -79,6 +96,7 @@ export default function ExpressionPicker({ set, onSave, onClose, style = '3d' })
     setCustom('');
   };
   const used = new Set(draft.map((x) => x.id));
+  const draftPack = matchPack(draft);
   const group = LIBRARY_GROUPS.find((g) => g.id === tab);
 
   return (
@@ -104,7 +122,7 @@ export default function ExpressionPicker({ set, onSave, onClose, style = '3d' })
                 slot === i ? 'border-peach-500 bg-peach-300/20' : 'border-cream-200 bg-cream-50'
               }`}
             >
-              <ExpressionThumb item={x} style={style} small />
+              <ExpressionThumb item={x} style={style} pack={draftPack} small />
             </button>
           ))}
         </div>
