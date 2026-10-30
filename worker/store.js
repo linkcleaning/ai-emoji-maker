@@ -14,6 +14,12 @@ export const DEFAULTS = {
 
 const TOKEN_HOURS = 6;
 export const MODELS = ['gemini-3.1-flash-image', 'gemini-3.1-flash-lite-image'];
+// 구글 공식 요금(이미지 1장당, 달러) → 원화(1달러 1,400원) + 입력(사진) 약간
+const USD_KRW = 1400;
+export function priceWon(model, size) {
+  const usd = model.includes('lite') ? 0.034 : size === '512' ? 0.045 : 0.067;
+  return Math.round((usd + 0.001) * USD_KRW * 10) / 10;
+}
 
 export function kstDay(now = Date.now()) {
   return new Date(now + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -32,6 +38,7 @@ export function createStore(sql) {
     sql(`CREATE TABLE IF NOT EXISTS admin_fail (at INTEGER)`);
     sql(`CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, calls INTEGER DEFAULT 0)`);
     sql(`CREATE TABLE IF NOT EXISTS samples (k TEXT PRIMARY KEY, data TEXT, at INTEGER)`);
+    sql(`CREATE TABLE IF NOT EXISTS cost (day TEXT, model TEXT, calls INTEGER DEFAULT 0, won REAL DEFAULT 0, PRIMARY KEY (day, model))`);
     sql(`CREATE TABLE IF NOT EXISTS timing (day TEXT PRIMARY KEY, n INTEGER DEFAULT 0, ms INTEGER DEFAULT 0, max INTEGER DEFAULT 0)`);
   };
   init();
@@ -148,6 +155,26 @@ export function createStore(sql) {
   };
   const sampleDelete = (prefix) => { sql(`DELETE FROM samples WHERE k LIKE ?`, `${String(prefix).replace(/[%_]/g, '')}%`); return sampleIndex(); };
 
+  /** 실제 쓴 AI 비용 기록 (구글 요금표 기준 1회 단가 × 성공한 호출) */
+  const recordCost = (model, size, now = Date.now()) => {
+    const won = priceWon(model, size);
+    sql(`INSERT INTO cost (day, model, calls, won) VALUES (?, ?, 1, ?) ON CONFLICT(day, model) DO UPDATE SET calls = calls + 1, won = won + excluded.won`, kstDay(now), model, won);
+  };
+  /** 최근 날짜별 비용 (기록 전 날짜는 호출 수 × 95원으로 추정) */
+  const costHistory = (days = 31, now = Date.now()) => {
+    const out = [];
+    for (let i = 0; i < days; i++) {
+      const day = kstDay(now - i * 86400000);
+      const c = sql(`SELECT model, calls, won FROM cost WHERE day = ?`, day);
+      if (c.length) out.push({ day, calls: c.reduce((s, r) => s + r.calls, 0), won: Math.round(c.reduce((s, r) => s + r.won, 0)), models: c.map((r) => ({ model: r.model, calls: r.calls })) });
+      else {
+        const d = one(`SELECT calls FROM daily WHERE day = ?`, day);
+        if (d && d.calls) out.push({ day, calls: d.calls, won: d.calls * 95, estimated: true });
+      }
+    }
+    return out;
+  };
+
   /** 관리자: 코드에 팩 충전(음수면 차감) */
   const addCredit = (code, packs, memo = '', now = Date.now()) => {
     packs = Math.max(-1000, Math.min(1000, Math.round(Number(packs) || 0)));
@@ -166,7 +193,11 @@ export function createStore(sql) {
     const calls = (one(`SELECT calls FROM daily WHERE day = ?`, day) || { calls: 0 }).calls;
     const tm = one(`SELECT n, ms, max FROM timing WHERE day = ?`, day);
     const timing = tm && tm.n ? { n: tm.n, avg: Math.round(tm.ms / tm.n / 100) / 10, max: Math.round(tm.max / 100) / 10 } : null;
-    return { day, total, calls, timing, users: rows, log, credits, config: getConfig() };
+    const history = costHistory(31, now);
+    const month = day.slice(0, 7);
+    const monthWon = history.filter((h) => h.day.startsWith(month)).reduce((s, h) => s + h.won, 0);
+    const todayWon = history.find((h) => h.day === day)?.won || 0;
+    return { day, total, calls, timing, cost: { today: todayWon, month: monthWon, history }, users: rows, log, credits, config: getConfig() };
   };
 
   /** 관리자 비밀번호 무차별 대입 방지: 1시간에 10회 실패하면 잠금 */
@@ -176,5 +207,5 @@ export function createStore(sql) {
   };
   const adminFail = (now = Date.now()) => { sql(`INSERT INTO admin_fail (at) VALUES (?)`, now); };
 
-  return { getConfig, setConfig, status, startPack, startAdminPack, useCall, refundCall, recordTiming, sampleIndex, sampleGet, samplePut, sampleDelete, addCredit, stats, adminLocked, adminFail };
+  return { getConfig, setConfig, status, startPack, startAdminPack, useCall, refundCall, recordTiming, recordCost, sampleIndex, sampleGet, samplePut, sampleDelete, addCredit, stats, adminLocked, adminFail };
 }

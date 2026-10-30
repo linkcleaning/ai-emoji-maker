@@ -130,7 +130,9 @@ async function generateGemini({ apiKey, model, refs, prompt, aspect = '1:1', sig
   // server: { token } → 우리 서버(/api/generate)를 거쳐 사장님 키로 호출
   const url = server ? '/api/generate' : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   // 서버 이용: 관리자 기기에서 모델을 직접 골랐을 때만 보냄 (아니면 관리자 화면의 '손님 AI 모델'을 따름)
-  const authHeaders = server ? { 'x-pack-token': server.token, ...(model ? { 'x-model': model } : {}) } : { 'x-goog-api-key': apiKey };
+  const authHeaders = server
+    ? { 'x-pack-token': server.token, 'x-size': imageSize && !smallOutputUnsupported ? imageSize : '1K', ...(model ? { 'x-model': model } : {}) }
+    : { 'x-goog-api-key': apiKey };
   const parts = [
     ...refs.map((r) => ({ inlineData: { mimeType: r.mime, data: r.base64 } })),
     { text: prompt },

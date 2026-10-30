@@ -22,6 +22,7 @@ export class Store extends DurableObject {
   startPack(args) { return this.s.startPack(args); }
   startAdminPack(args) { return this.s.startAdminPack(args); }
   recordTiming(ms) { return this.s.recordTiming(ms); }
+  recordCost(m, s) { return this.s.recordCost(m, s); }
   sampleIndex() { return this.s.sampleIndex(); }
   sampleGet(k) { return this.s.sampleGet(k); }
   samplePut(items) { return this.s.samplePut(items); }
@@ -144,7 +145,7 @@ export async function handleApi(req, env) {
       return json({ error: { code: 502, message: 'AI 서버에 연결하지 못했어요.' } }, 502);
     }
     if (!res.ok) await store.refundCall(token); // 실패한 호출은 횟수에서 빼지 않음
-    else await store.recordTiming(Date.now() - t0);
+    else { await store.recordTiming(Date.now() - t0); await store.recordCost(model, req.headers.get('x-size') === '512' ? '512' : '1K'); }
     return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-calls-left': String(use.ok ? use.remaining : 0) } });
   }
 

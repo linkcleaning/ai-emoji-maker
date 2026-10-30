@@ -72,9 +72,10 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
                 <p className="text-2xl font-bold tabular-nums">{data.total}<span className="text-sm text-cocoa-400"> / {data.config.dailyCap}</span></p>
               </div>
               <div className="rounded-2xl bg-cream-100 p-3">
-                <p className="text-[11px] font-bold text-cocoa-400">예상 AI 비용(오늘 · 호출 {data.calls ?? 0}회)</p>
-                <p className="text-2xl font-bold tabular-nums">약 {((data.calls ?? 0) * 95).toLocaleString()}<span className="text-sm text-cocoa-400">원</span></p>
+                <p className="text-[11px] font-bold text-cocoa-400">AI 비용 오늘 (호출 {data.calls ?? 0}회)</p>
+                <p className="text-2xl font-bold tabular-nums">약 {(data.cost?.today ?? (data.calls ?? 0) * 95).toLocaleString()}<span className="text-sm text-cocoa-400">원</span></p>
               </div>
+              {data.cost && <CostCard cost={data.cost} />}
               <div className="col-span-2 rounded-2xl bg-cream-100 p-3">
                 <p className="text-[11px] font-bold text-cocoa-400">AI가 한 번 그리는 데 걸린 시간 (오늘)</p>
                 <p className="text-lg font-bold tabular-nums">
@@ -183,6 +184,43 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** 이번 달 AI 비용 + 날짜별 내역 */
+function CostCard({ cost }) {
+  const [open, setOpen] = useState(false);
+  const max = Math.max(1, ...cost.history.map((h) => h.won));
+  const label = (m) => (m.includes('lite') ? '라이트' : '기본');
+  return (
+    <div className="col-span-2 rounded-2xl bg-cream-100 p-3">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between text-left" aria-expanded={open}>
+        <span>
+          <span className="block text-[11px] font-bold text-cocoa-400">AI 비용 이번 달 ({new Date().getMonth() + 1}월)</span>
+          <span className="block text-2xl font-bold tabular-nums">약 {cost.month.toLocaleString()}<span className="text-sm text-cocoa-400">원</span></span>
+        </span>
+        <span className="text-xs font-bold text-peach-600">{open ? '접기 ▲' : '날짜별 보기 ▼'}</span>
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1">
+          {cost.history.length ? cost.history.map((h) => (
+            <li key={h.day} className="text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-12 shrink-0 tabular-nums text-cocoa-600">{h.day.slice(5).replace('-', '/')}</span>
+                <span className="flex-1 h-2 rounded-full bg-white overflow-hidden"><span className="block h-full bg-peach-400 rounded-full" style={{ width: `${(h.won / max) * 100}%` }} /></span>
+                <span className="w-16 shrink-0 text-right font-bold tabular-nums">{h.won.toLocaleString()}원</span>
+              </div>
+              <p className="pl-14 text-[10px] text-cocoa-400">
+                {h.calls}회{h.models ? ' · ' + h.models.map((m) => `${label(m.model)} ${m.calls}`).join(', ') : ''}{h.estimated ? ' · 추정' : ''}
+              </p>
+            </li>
+          )) : <li className="text-xs text-cocoa-400">아직 기록이 없어요</li>}
+        </ul>
+      )}
+      <p className="mt-2 text-[10px] text-cocoa-400 leading-relaxed break-keep">
+        구글 요금표 기준 추정이에요 (1회: 기본 약 95원, 라이트 약 49원). 실제 청구액은 Google AI Studio → 사용량·결제에서 확인할 수 있어요.
+      </p>
     </div>
   );
 }
