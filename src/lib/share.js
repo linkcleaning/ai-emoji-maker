@@ -22,7 +22,7 @@ export const safeName = (s) => String(s).replace(/^custom:/, '').replace(/[\\/:*
  * 미지원 브라우저에서는 false 반환 → 호출부에서 다운로드로 대체
  */
 export async function shareImages(items) {
-  const files = items.map(({ url, name }) => new File([dataUrlToBlob(url)], name, { type: 'image/png' }));
+  const files = items.map(({ url, name }) => { const b = dataUrlToBlob(url); return new File([b], name, { type: b.type || 'image/png' }); });
   if (navigator.canShare && navigator.canShare({ files })) {
     try {
       await navigator.share({ files }); // 이미지만 보냄(문구 말풍선 없이)

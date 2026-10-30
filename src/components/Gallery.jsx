@@ -2,7 +2,7 @@ import { AlertCircle, RotateCw } from 'lucide-react';
 
 const BALL_COLORS = ['#FFC93C', '#FF7F66', '#6FB6F2', '#8BD17C', '#B98AF0', '#FF9EC4', '#FFB347', '#5ED3C4', '#F26D6D', '#7FA7FF', '#C5D86D', '#E0A96D'];
 
-export default function Gallery({ stickers, onOpen, onRetry, busy }) {
+export default function Gallery({ stickers, onOpen, onRetry, busy, display = (s) => s.url }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       {stickers.map((s, i) => (
@@ -13,7 +13,7 @@ export default function Gallery({ stickers, onOpen, onRetry, busy }) {
               className="jackpot block w-full aspect-square rounded-2xl bg-white/50 hover:bg-white transition active:scale-95"
               aria-label={`${s.label} 크게 보기`}
             >
-              <img src={s.url} alt={s.label} className="w-full h-full object-contain" draggable={false} />
+              <img src={display(s)} alt={s.label} className="w-full h-full object-contain" draggable={false} />
             </button>
           ) : s.status === 'error' ? (
             <div className="w-full aspect-square rounded-2xl bg-white border-2 border-dashed border-peach-300 flex flex-col items-center justify-center p-2 text-center overflow-hidden">

@@ -16,6 +16,7 @@ import InstallGuide from './components/InstallGuide.jsx';
 import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, shareImages, safeName } from './lib/share.js';
+import { makeAnimatedSticker, motionLabel } from './lib/animate.js';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
 // 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
@@ -344,7 +345,28 @@ export default function App() {
   const failedCount = stickers.filter((x) => x.status === 'error').length;
 
   // ── 내보내기 ─────────────────────────────
-  const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.png`;
+  // 움직이는 이모티콘(GIF) 켜기/끄기 — 기기에 기억
+  const [animated, setAnimated] = useState(() => { try { return localStorage.getItem('jjigeo-animated') === '1'; } catch { return false; } });
+  const toggleAnimated = () => setAnimated((v) => { try { localStorage.setItem('jjigeo-animated', v ? '0' : '1'); } catch { /* 무시 */ } return !v; });
+  const [gifMap, setGifMap] = useState({}); // 스티커 그림 주소 → 움직이는 GIF
+  useEffect(() => {
+    if (!animated || busy) return undefined;
+    let alive = true;
+    (async () => {
+      for (const s of stickers) {
+        if (!alive) return;
+        if (!s.url || gifMap[s.url]) continue;
+        await new Promise((r) => setTimeout(r, 0)); // 화면이 멈추지 않게 한 장씩
+        const g = await makeAnimatedSticker(s.url, s, 150).catch(() => null);
+        if (alive && g) setGifMap((m) => ({ ...m, [s.url]: g }));
+      }
+    })();
+    return () => { alive = false; };
+  }, [animated, busy, stickers]); // eslint-disable-line react-hooks/exhaustive-deps
+  const gifOf = (s) => (animated && s?.url ? gifMap[s.url] : null);
+  const gifsReady = !animated || stickers.every((s) => !s.url || gifMap[s.url]);
+
+  const fileName = (s, i) => `emoji_${String(i + 1).padStart(2, '0')}_${safeName(s.id)}.${gifOf(s) ? 'gif' : 'png'}`;
   const sendSize = 120; // 카톡·문자로 보낼 크기(px) — 작게 고정
   // 공유 버튼을 누른 순간 바로 보낼 수 있게(아이폰은 지연되면 공유가 막힘) 미리 줄여둠
   const [sizedMap, setSizedMap] = useState({});
@@ -356,7 +378,8 @@ export default function App() {
     });
     return () => { alive = false; };
   }, [stickers, sendSize]);
-  const sized = async (url) => sizedMap[`${sendSize}|${url}`] || resizeSticker(url, sendSize); // 보낼 크기로 줄인 PNG
+  const sizedPng = async (url) => sizedMap[`${sendSize}|${url}`] || resizeSticker(url, sendSize); // 보낼 크기로 줄인 PNG
+  const sized = async (url) => (animated && gifMap[url]) || sizedPng(url); // 움직이는 모드면 GIF
   const saveOne = async (i) => downloadDataUrl(await sized(stickers[i].url), fileName(stickers[i], i));
   const shareOne = async (i) => {
     const r = await shareImages([{ url: await sized(stickers[i].url), name: fileName(stickers[i], i) }]);
@@ -535,13 +558,32 @@ export default function App() {
               <h2 className="font-display text-xl">내 이모티콘 팩</h2>
               <span className="text-xs font-bold text-cocoa-400">{doneCount}/12 완성</span>
             </div>
+            {doneCount > 0 && !busy && (
+              <button
+                onClick={toggleAnimated}
+                role="switch"
+                aria-checked={animated}
+                className={`w-full mb-3 flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left border-2 transition ${animated ? 'border-peach-400 bg-peach-300/15' : 'border-cream-200 bg-cream-50'}`}
+              >
+                <span className="text-xl" aria-hidden>🎬</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-bold text-sm">움직이는 이모티콘</span>
+                  <span className="block text-[11px] text-cocoa-400 break-keep">
+                    {animated ? (gifsReady ? '켜짐 · 보내면 움직이는 GIF로 가요 (무료)' : '움직이게 만드는 중…') : '표정마다 통통·부들부들·두근두근 움직여요 (무료)'}
+                  </span>
+                </span>
+                <span className={`relative w-11 h-6 rounded-full transition ${animated ? 'bg-peach-500' : 'bg-cream-300'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${animated ? 'left-[22px]' : 'left-0.5'}`} />
+                </span>
+              </button>
+            )}
             {failedCount > 0 && !busy && (
               <button onClick={retryFailed} className="btn-ghost w-full mb-3 !border-2 !border-peach-300">
                 실패한 것만 다시 ({failedCount}장)
               </button>
             )}
             <div className="rounded-2xl bg-cream-100 p-3">
-              <Gallery stickers={stickers} onOpen={setViewIdx} onRetry={retry} busy={busy} />
+              <Gallery stickers={stickers} onOpen={setViewIdx} onRetry={retry} busy={busy} display={(s) => gifOf(s) || s.url} />
             </div>
             {doneCount > 0 && (
               <p className="text-[11px] text-cocoa-400 mt-3 flex items-center gap-1">
@@ -580,6 +622,8 @@ export default function App() {
         <StickerModal
           allowRaw={!serverCfg || adminOn}
           sticker={stickers[viewIdx]}
+          displayUrl={gifOf(stickers[viewIdx])}
+          motion={animated ? motionLabel(stickers[viewIdx]) : null}
           index={viewIdx}
           total={12}
           busy={busy}
