@@ -31,6 +31,7 @@ export function createStore(sql) {
     sql(`CREATE TABLE IF NOT EXISTS config (k TEXT PRIMARY KEY, v TEXT)`);
     sql(`CREATE TABLE IF NOT EXISTS admin_fail (at INTEGER)`);
     sql(`CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, calls INTEGER DEFAULT 0)`);
+    sql(`CREATE TABLE IF NOT EXISTS samples (k TEXT PRIMARY KEY, data TEXT, at INTEGER)`);
     sql(`CREATE TABLE IF NOT EXISTS timing (day TEXT PRIMARY KEY, n INTEGER DEFAULT 0, ms INTEGER DEFAULT 0, max INTEGER DEFAULT 0)`);
   };
   init();
@@ -128,6 +129,25 @@ export function createStore(sql) {
     sql(`INSERT INTO timing (day, n, ms, max) VALUES (?, 1, ?, ?) ON CONFLICT(day) DO UPDATE SET n = n + 1, ms = ms + excluded.ms, max = MAX(max, excluded.max)`, kstDay(now), ms, ms);
   };
 
+  /** 표정 미리보기 그림 (관리자가 앱에서 만든 것). k = '3d/love/kiss' 같은 형태 */
+  const SAMPLE_KEY = /^(3d|2d)\/[a-z0-9_]{1,24}\/[a-z0-9_]{1,32}$/;
+  const sampleIndex = () => {
+    const rows = sql(`SELECT k, at FROM samples ORDER BY k`);
+    return { keys: rows.map((r) => r.k), v: rows.reduce((m, r) => Math.max(m, r.at), 0) };
+  };
+  const sampleGet = (k) => one(`SELECT data FROM samples WHERE k = ?`, k);
+  const samplePut = (items, now = Date.now()) => {
+    let n = 0;
+    for (const it of Array.isArray(items) ? items.slice(0, 60) : []) {
+      const k = String(it?.k || ''), d = String(it?.data || '');
+      if (!SAMPLE_KEY.test(k) || !/^data:image\/(webp|png);base64,[A-Za-z0-9+/=]+$/.test(d) || d.length > 120000) continue;
+      sql(`INSERT INTO samples (k, data, at) VALUES (?, ?, ?) ON CONFLICT(k) DO UPDATE SET data = excluded.data, at = excluded.at`, k, d, now);
+      n++;
+    }
+    return { saved: n, ...sampleIndex() };
+  };
+  const sampleDelete = (prefix) => { sql(`DELETE FROM samples WHERE k LIKE ?`, `${String(prefix).replace(/[%_]/g, '')}%`); return sampleIndex(); };
+
   /** 관리자: 코드에 팩 충전(음수면 차감) */
   const addCredit = (code, packs, memo = '', now = Date.now()) => {
     packs = Math.max(-1000, Math.min(1000, Math.round(Number(packs) || 0)));
@@ -156,5 +176,5 @@ export function createStore(sql) {
   };
   const adminFail = (now = Date.now()) => { sql(`INSERT INTO admin_fail (at) VALUES (?)`, now); };
 
-  return { getConfig, setConfig, status, startPack, startAdminPack, useCall, refundCall, recordTiming, addCredit, stats, adminLocked, adminFail };
+  return { getConfig, setConfig, status, startPack, startAdminPack, useCall, refundCall, recordTiming, sampleIndex, sampleGet, samplePut, sampleDelete, addCredit, stats, adminLocked, adminFail };
 }

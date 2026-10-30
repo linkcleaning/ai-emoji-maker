@@ -22,6 +22,10 @@ export class Store extends DurableObject {
   startPack(args) { return this.s.startPack(args); }
   startAdminPack(args) { return this.s.startAdminPack(args); }
   recordTiming(ms) { return this.s.recordTiming(ms); }
+  sampleIndex() { return this.s.sampleIndex(); }
+  sampleGet(k) { return this.s.sampleGet(k); }
+  samplePut(items) { return this.s.samplePut(items); }
+  sampleDelete(prefix) { return this.s.sampleDelete(prefix); }
   useCall(token) { return this.s.useCall(token); }
   refundCall(token) { return this.s.refundCall(token); }
   addCredit(code, packs, memo) { return this.s.addCredit(code, packs, memo); }
@@ -75,6 +79,19 @@ export async function handleApi(req, env) {
   if (path === '/api/config' && req.method === 'GET') {
     const cfg = await store.getConfig();
     return json({ server: true, freePerDay: cfg.freePerDay, payInfo: cfg.payInfo, models: ALLOWED_MODELS });
+  }
+
+  // 표정 미리보기 그림 (관리자가 만든 것) — 목록 + 그림 한 장씩
+  if (path === '/api/samples' && req.method === 'GET') {
+    return new Response(JSON.stringify(await store.sampleIndex()), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+  const sm = path.match(/^\/api\/samples\/((?:3d|2d)\/[a-z0-9_]+\/[a-z0-9_]+)\.img$/);
+  if (sm && req.method === 'GET') {
+    const row = await store.sampleGet(sm[1]);
+    if (!row) return json({ error: 'not_found' }, 404);
+    const [, mime, b64] = row.data.match(/^data:([^;]+);base64,(.*)$/);
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return new Response(bin, { headers: { 'content-type': mime, 'cache-control': 'public, max-age=31536000, immutable' } });
   }
 
   // 내 이용 현황
@@ -145,6 +162,11 @@ export async function handleApi(req, env) {
       const c = String(code || '').trim().toUpperCase();
       if (!validCode(c)) return json({ error: 'bad_code', message: '이용 코드는 6자리예요 (예: K7Q2MX).' }, 400);
       return json(await store.addCredit(c, packs, memo));
+    }
+    if (path === '/api/admin/samples' && req.method === 'POST') {
+      const body = await readJson(req);
+      if (body.deletePrefix) return json(await store.sampleDelete(body.deletePrefix));
+      return json(await store.samplePut(body.items));
     }
     if (path === '/api/admin/config' && req.method === 'POST') return json(await store.setConfig(await readJson(req)));
     return json({ error: 'not_found' }, 404);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, RefreshCw, KeyRound } from 'lucide-react';
+import SampleMaker from './SampleMaker.jsx';
 import { adminStats, adminCredit, adminConfig, getAdminPw, setAdminPw } from '../lib/server.js';
 
 const fmtTime = (ms) => new Date(ms).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -165,6 +166,8 @@ export default function AdminModal({ onClose, notify, onOpenSettings }) {
                 <button onClick={saveCfg} disabled={busy} className="btn-ghost w-full">설정 저장</button>
               </section>
             )}
+
+            <div className="border-t border-cream-200 pt-4"><SampleMaker notify={notify} /></div>
 
             <section className="border-t border-cream-200 pt-4">
               <button onClick={onOpenSettings} className="btn-ghost w-full">⚙️ 고급 설정 (AI 엔진·생성 방식·배경 처리)</button>

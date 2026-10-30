@@ -80,4 +80,6 @@ export const setAdminPw = (pw) => { try { if (pw) localStorage.setItem(ADMIN_KEY
 const admin = (path, opts = {}) => call(`/api/admin/${path}`, { ...opts, headers: { 'x-admin-password': opts.pw ?? getAdminPw() } });
 export const adminStats = (pw) => admin('stats', { pw });
 export const adminCredit = (code, packs, memo) => admin('credit', { method: 'POST', body: { code, packs, memo } });
+export const adminSamples = (items) => admin('samples', { method: 'POST', body: { items } });
+export const adminDeleteSamples = (prefix) => admin('samples', { method: 'POST', body: { deletePrefix: prefix } });
 export const adminConfig = (patch) => admin('config', { method: 'POST', body: patch });

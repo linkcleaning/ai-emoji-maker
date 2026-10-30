@@ -1,29 +1,11 @@
 import { useState } from 'react';
 import { X, RotateCw } from 'lucide-react';
 import { LIBRARY_GROUPS, PACKS, packSet, customExpression, matchPack } from '../lib/expressions.js';
-
-// 실제 예시 그림이 있는 표정 (스타일별). 없으면 아이콘으로 보여줌
-const BASIC_IDS = ['hello', 'love', 'fighting', 'panic', 'angry', 'sad', 'tired', 'question', 'party', 'sleep', 'cool', 'ok'];
-const SAMPLES = {
-  '3d': new Set([
-    ...BASIC_IDS,
-    'jealous', 'good_morning', 'good_night', 'hug_me', 'shy', 'finger_heart', 'kiss', 'miss_you',
-    'commute', 'coffee', 'yes_sir', 'thanks_bow', 'sorry_bow', 'report', 'lunch', 'overtime', 'payday', 'leave_work', 'headache',
-    'lc_booking', 'lc_go', 'lc_arrive', 'lc_working', 'lc_sparkle', 'lc_done', 'lc_mold', 'lc_dust', 'lc_check', 'lc_movein', 'lc_thanks', 'lc_again',
-  ]),
-  '2d': new Set(BASIC_IDS),
-};
-// 팩 전용 그림: 기본 팩과 같은 표정이라도 그 팩을 고르면 그 팩 캐릭터로 보여줌 (팩 안에서 그림이 섞이지 않게)
-const PACK_SAMPLES = {
-  '3d': { love: ['love', 'sad', 'angry', 'ok'], office: ['fighting'] },
-};
-const sampleSrc = (id, style, pack) => {
-  if (pack && PACK_SAMPLES[style]?.[pack]?.includes(id)) return `./samples/${style}/${pack}/${id}.webp`;
-  return (SAMPLES[style] || SAMPLES['3d']).has(id) ? `./samples/${style}/${id}.webp` : null;
-};
+import { sampleSrc, useServerSamples } from '../lib/samples.js';
 
 /** 표정 미리보기 한 칸: 예시 그림(있으면) 또는 아이콘 + 이름 */
 export function ExpressionThumb({ item, style = '3d', small = false, pack = null }) {
+  useServerSamples(); // 관리자가 새 그림을 만들면 바로 반영
   const src = sampleSrc(item.id, style, pack);
   return (
     <span className="block min-w-0">
