@@ -35,11 +35,14 @@ export default function StickerModal({ sticker, index, total, onClose, onNav, on
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={onShare} className="btn-primary !px-2"><Share2 size={16} /> 보내기</button>
-          <button onClick={onSave} className="btn-ghost !px-2"><Download size={16} /> 저장</button>
-          <button onClick={onRegenerate} disabled={busy} className="btn-ghost !px-2"><RotateCw size={16} /> 다시</button>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <button onClick={onShare} className="btn-primary"><Share2 size={16} /> 카톡으로 보내기</button>
+          <button onClick={onRegenerate} disabled={busy} className="btn-ghost !px-4"><RotateCw size={16} /> 다시</button>
         </div>
+        <p className="mt-2.5 text-center text-[11px] text-cocoa-400">
+          앱 보관함에 자동 저장돼요 ·{' '}
+          <button onClick={onSave} className="underline underline-offset-2 inline-flex items-center gap-0.5"><Download size={11} /> 사진첩에도 저장</button>
+        </p>
       </div>
     </div>
   );

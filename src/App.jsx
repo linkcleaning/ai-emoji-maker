@@ -17,6 +17,10 @@ import { PROVIDERS, generateImage, runPool } from './lib/api.js';
 import { prepareUpload, processSticker, checkBackground, dataUrlToRef, toJpegRef, sliceSheet, pieceToSticker, composeSheet, resizeSticker } from './lib/imageTools.js';
 import { downloadDataUrl, shareImages, safeName } from './lib/share.js';
 import { makeAnimatedSticker, motionLabel } from './lib/animate.js';
+import { savePack, listPacks, newPackId } from './lib/vault.js';
+import VaultModal from './components/VaultModal.jsx';
+import { findExpression, matchPack as matchPackOf, PACKS as ALL_PACKS } from './lib/expressions.js';
+const APP_VERSION = 'v18';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
 // 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
@@ -138,6 +142,29 @@ export default function App() {
 
   const patch = (i, obj) => setStickers((arr) => arr.map((s, k) => (k === i ? { ...s, ...obj } : s)));
 
+  // ── 내 보관함 (사진첩 대신 앱 안에 저장) ──
+  const packRef = useRef(null); // 지금 화면의 팩 {id, createdAt, title, style, category}
+  const [showVault, setShowVault] = useState(false);
+  const [vaultCount, setVaultCount] = useState(0);
+  useEffect(() => { listPacks().then((p) => setVaultCount(p.length)); }, []);
+  useEffect(() => {
+    if (busy || !packRef.current || !stickers.some((s) => s.status === 'done' && s.url)) return undefined;
+    const t = setTimeout(async () => {
+      await savePack({ ...packRef.current, stickers: stickers.filter((s) => s.status === 'done') });
+      setVaultCount((await listPacks()).length);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [stickers, busy]);
+  const openPack = (p) => {
+    packRef.current = { id: p.id, createdAt: p.createdAt, title: p.title, style: p.style, category: p.category };
+    const set = p.stickers.map((s) => ({ ...findExpression(s.id, s.label), label: s.label, text: s.text, icon: s.icon }));
+    optsRef.current = { category: p.category || 'person', style: p.style || '3d', set };
+    packTokenRef.current = null;
+    setStickers(p.stickers.map((s, i) => ({ ...set[i], status: 'done', url: s.url, error: null })));
+    setShowVault(false); setViewIdx(null); setFatal(null); setDrawing(false);
+    setTimeout(() => document.getElementById('my-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
   /** 다음 이모티콘: 지난 결과를 비우고 맨 위 사진 올리기로 */
   const newRound = () => {
     setViewIdx(null); setFatal(null); setDrawing(false);
@@ -224,6 +251,8 @@ export default function App() {
     setDrawing(true);
     setBusy(true);
     const t0 = Date.now();
+    const packInfo = ALL_PACKS.find((x) => x.id === matchPackOf(expSet));
+    packRef.current = { id: newPackId(), createdAt: Date.now(), title: `${packInfo ? `${packInfo.emoji} ${packInfo.label}` : '✏️ 내 구성'} · ${style.toUpperCase()}`, style, category };
 
     try {
       if (settings.mode === 'sheet') {
@@ -456,6 +485,14 @@ export default function App() {
           </div>
         )}
 
+        {vaultCount > 0 && (
+          <div className="flex justify-end -mb-2">
+            <button onClick={() => setShowVault(true)} className="rounded-full bg-white/80 border border-cream-200 px-3.5 py-1.5 text-xs font-bold text-cocoa-600 shadow-sm active:scale-95">
+              📁 내 보관함 <span className="text-peach-600">{vaultCount}</span>
+            </button>
+          </div>
+        )}
+
         {/* 업로드 & 옵션 */}
         <section className="card p-4 space-y-4">
           <Uploader photo={photo} onFile={onFile} disabled={busy} />
@@ -553,7 +590,7 @@ export default function App() {
 
         {/* 결과 갤러리 */}
         {hasResults && (
-          <section className="card p-4">
+          <section id="my-pack" className="card p-4 scroll-mt-20">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display text-xl">내 이모티콘 팩</h2>
               <span className="text-xs font-bold text-cocoa-400">{doneCount}/12 완성</span>
@@ -601,10 +638,11 @@ export default function App() {
         <InstallGuide />
 
         <footer className="text-center text-[11px] text-cocoa-400 pt-2 space-y-2">
-          <p>올린 사진은 이모티콘을 만드는 데만 쓰이고, 이 앱에 저장되지 않아요.</p>
+          <p className="break-keep">올린 사진은 이모티콘을 만드는 데만 쓰여요. 완성된 이모티콘은 사진첩이 아니라 이 휴대폰의 보관함에만 저장돼요.</p>
           {serverCfg && (
             <button onClick={() => setShowAdmin(true)} className="text-cocoa-400/60 underline underline-offset-2">관리자</button>
           )}
+                  <p className="text-[9px] text-cocoa-400/40 tabular-nums">{APP_VERSION}</p>
         </footer>
       </main>
 
@@ -617,6 +655,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showVault && <VaultModal onClose={() => setShowVault(false)} onOpen={openPack} currentId={packRef.current?.id} />}
 
       {viewIdx !== null && stickers[viewIdx]?.url && (
         <StickerModal

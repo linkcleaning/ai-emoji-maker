@@ -167,3 +167,6 @@ export function matchPack(set) {
   const key = set.map((x) => x.id).join(',');
   return PACKS.find((p) => p.ids.join(',') === key)?.id || null;
 }
+
+/** 보관함에서 다시 불러올 때: id로 표정 정보 찾기 (직접 입력은 다시 만듦) */
+export const findExpression = (id, label) => ALL[id] || (String(id).startsWith('custom:') ? customExpression(String(id).slice(7) || label) : { ...ALL.hello, id, label });
