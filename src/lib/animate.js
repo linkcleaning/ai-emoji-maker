@@ -30,7 +30,11 @@ const BY_ID = {
   angry: 'shake', panic: 'shake', jealous: 'shake', headache: 'shake', surprised: 'shake', x_cold: 'shake', lc_mold: 'shake', lc_dust: 'shake',
   question: 'wobble', thinking: 'wobble', cool: 'wobble', idea: 'jump', lc_check: 'wobble', bored: 'wobble',
   sad: 'droop', sorry: 'droop', sorry_bow: 'droop', tired: 'droop', overtime: 'droop', commute: 'droop',
-  sleep: 'float', good_night: 'float', roll: 'spin', x_snowball: 'spin', zoomies: 'spin',
+  r_heol: 'shake', r_daebak: 'jump', r_okay: 'wobble', r_nono: 'shake', r_thumbs: 'jump', r_touched: 'pulse', r_wail: 'droop', r_quake: 'shake', r_hyunta: 'droop', r_kingbad: 'shake', r_jonber: 'shake', r_shh: 'wobble',
+  g_morning: 'jump', g_meal: 'bounce', g_health: 'bounce', g_thanks: 'bounce', g_loveyou: 'pulse', g_take_care: 'wave', g_arrived: 'wave', g_umbrella: 'wobble', g_cheer: 'jump', g_missyou: 'pulse', g_congrats: 'jump', g_goodnight: 'float',
+  ev_wedding: 'pulse', ev_baby: 'pulse', ev_parents: 'pulse', ev_seollal: 'bounce', ev_chuseok: 'float', ev_thanks: 'bounce',
+  jj_welcome: 'wave', jj_wind: 'shake', jj_cancel: 'droop', jj_hareubang: 'wobble', jj_swim: 'float', jj_peel: 'pulse',
+    sleep: 'float', good_night: 'float', roll: 'spin', x_snowball: 'spin', zoomies: 'spin',
 };
 export function motionFor(item) {
   if (BY_ID[item.id]) return BY_ID[item.id];

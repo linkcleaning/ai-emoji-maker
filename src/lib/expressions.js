@@ -117,6 +117,70 @@ const XMAS = [
   e('x_newyear', '새해 복 많이', '새해 복 많이 받으세요', '🎆', 'wearing a colorful Korean hanbok, doing a polite traditional New Year bow (sebae) with hands together, fireworks sparkling above', 'wearing a tiny colorful Korean hanbok, bowing politely with front paws together, fireworks sparkling above', 1),
 ];
 
+// 리액션 (친구 단톡방)
+const REACT = [
+  e('r_heol', '헐', '헐…', '😧', 'frozen in shock with jaw dropped, eyes as tiny dots, a single sweat drop, both hands on cheeks', 'frozen in shock with jaw dropped and eyes as tiny dots, ears flattened back', 3),
+  e('r_daebak', '대박', '대박!', '🤩', 'sparkling star-shaped eyes, mouth wide open in amazement, both hands up beside the face, sparkles bursting around', null, 8),
+  e('r_okay', 'ㅇㅋ', 'ㅇㅋ', '👌', 'cheerful wink making a big OK hand sign with fingers forming a circle next to the face', 'cheerful wink, one front paw raised in a cute OK gesture', 11),
+  e('r_nono', 'ㄴㄴ', 'ㄴㄴ', '🙅', 'crossing both arms in a big X in front of the chest, firm pouty face shaking the head', 'crossing both front paws in an X in front of the chest, firm pouty face', 4),
+  e('r_thumbs', '엄지척', '최고!', '👍', 'giving a big thumbs up with both hands, proud confident grin, small sparkles', 'raising one front paw high proudly like a thumbs up, confident grin, sparkles', 2),
+  e('r_touched', '감동', '감동이야ㅠㅠ', '🥹', 'hands clasped at the chest, big shiny eyes welling up with happy tears, trembling smile, small hearts', null, 5),
+  e('r_wail', '오열', '으아앙', '😭', 'crying loudly with mouth wide open, two waterfall streams of tears gushing from the eyes', 'wailing loudly with mouth wide open, two streams of tears gushing', 5),
+  e('r_quake', '동공지진', '동공지진', '😵‍💫', 'eyes shaking and spiraling in panic, sweating heavily, wobbly shake lines around the head', null, 3),
+  e('r_hyunta', '현타', '현타…', '😶', 'sitting slumped with an empty blank stare into the distance, soul-like little white wisp floating out of the mouth', 'slumped flat with an empty blank stare, a tiny white soul wisp floating out', 6),
+  e('r_kingbad', '킹받네', '킹받네', '😤', 'annoyed fake smile with a twitching eye and a throbbing vein mark on the forehead, clenched fist trembling', null, 4),
+  e('r_jonber', '존버', '버틴다…', '🫠', 'clinging desperately to a rope with both hands, gritted teeth, determined sweaty face', 'clinging desperately to a rope with all four paws, determined sweaty face', 6),
+  e('r_shh', '쉿', '쉿!', '🤫', 'index finger pressed to the lips, one eye winking, secretive playful look', 'one paw pressed to the mouth secretly, one eye winking', 10),
+];
+
+// 안부·어른용 (부모님·가족 단톡방) — 정중하고 따뜻하게
+const GREET = [
+  e('g_morning', '좋은 아침', '좋은 아침입니다', '🌅', 'stretching happily beside a rising sun, fresh bright smile, a small flower pot', null, 0),
+  e('g_meal', '식사하셨어요?', '식사하셨어요?', '🍚', 'holding a steaming bowl of rice with chopsticks, warm caring smile', null, 7),
+  e('g_health', '건강하세요', '건강하세요', '🍀', 'holding a four-leaf clover with both hands, gentle respectful bow and kind smile', null, 1),
+  e('g_thanks', '감사합니다', '감사합니다', '🙇', 'bowing politely with both hands neatly together, grateful closed-eye smile, small flowers', null, 1),
+  e('g_loveyou', '사랑해요', '사랑해요', '💞', 'making a big heart shape over the head with both arms, warm loving smile', 'curling the tail into a heart shape, warm loving smile', 1),
+  e('g_take_care', '조심히 가세요', '조심히 가세요', '🚗', 'waving goodbye warmly next to a small cute car, caring smile', null, 0),
+  e('g_arrived', '잘 도착했어요', '잘 도착했어요', '🏠', 'standing at the front door of a small cozy house with a suitcase, relieved happy smile, waving', null, 0),
+  e('g_umbrella', '우산 챙기세요', '비 와요, 우산 챙기세요', '☂️', 'holding a yellow umbrella in the rain, raindrops falling, caring smile pointing at the umbrella', null, 10),
+  e('g_cheer', '힘내세요', '힘내세요!', '💪', 'both fists raised cheerfully, encouraging bright smile, small sparkles', null, 2),
+  e('g_missyou', '보고 싶어요', '보고 싶어요', '🥰', 'hugging a framed family photo to the chest, gentle teary loving smile', null, 1),
+  e('g_congrats', '축하드려요', '축하드려요', '💐', 'holding out a big bouquet of flowers with both hands, respectful bow and bright smile', null, 8),
+  e('g_goodnight', '편히 주무세요', '편히 주무세요', '🌙', 'wearing pajamas, waving gently with sleepy eyes, a crescent moon and stars', null, 9),
+];
+
+// 기념일 (경조사)
+const EVENT = [
+  e('ev_birthday', '생일 축하', '생일 축하해요', '🎂', 'holding a birthday cake with lit candles, party hat, confetti', null, 8),
+  e('ev_pass', '합격 축하', '합격 축하해요!', '🎓', 'wearing a graduation cap, throwing confetti with arms raised in joy', null, 8),
+  e('ev_wedding', '결혼 축하', '결혼 축하해요', '💒', 'holding a small wedding bouquet, two golden rings and hearts floating, joyful smile', null, 1),
+  e('ev_baby', '출산 축하', '출산 축하해요', '👶', 'gently cradling a tiny baby bottle and a baby rattle, soft pastel hearts, tender smile', null, 1),
+  e('ev_promotion', '승진 축하', '승진 축하해요', '🏆', 'holding a golden trophy high, wearing a tie, proud cheering face, sparkles', null, 2),
+  e('ev_newyear', '새해 복', '새해 복 많이 받으세요', '🧧', 'holding a red lucky envelope with a bright smile, golden coins and fireworks', null, 8),
+  e('ev_seollal', '설날 세배', '세배 드려요', '🙇', 'wearing a colorful Korean hanbok, doing a deep traditional New Year bow (sebae) on the floor', 'wearing a tiny colorful hanbok, bowing politely on the floor', 1),
+  e('ev_chuseok', '추석', '풍성한 한가위', '🌕', 'wearing hanbok, holding a plate of songpyeon rice cakes under a big full moon', null, 1),
+  e('ev_parents', '어버이날', '사랑하고 감사해요', '🌹', 'holding out a red carnation flower with both hands, grateful loving smile', null, 1),
+  e('ev_yearend', '한 해 수고했어', '올해도 수고했어요', '🎊', 'patting own shoulder with a proud tired smile, a small calendar and confetti', null, 2),
+  e('ev_exam', '시험 응원', '시험 대박나세요', '✏️', 'holding a giant pencil like a sword, headband tied on the forehead, determined cheering face', null, 2),
+  e('ev_thanks', '감사 인사', '진심으로 감사드려요', '🙏', 'deep polite bow with a gift box with a ribbon held out in both hands', null, 1),
+];
+
+// 제주
+const JEJU = [
+  e('jj_welcome', '혼저옵서예', '혼저옵서예~', '🌺', 'waving both hands warmly in welcome, a hibiscus flower behind one ear, small palm leaf and wave props beside', null, 0),
+  e('jj_tangerine', '감귤', '귤 먹을래?', '🍊', 'holding a bright orange Jeju tangerine with green leaves up to the cheek, big sunny smile', 'holding a bright orange tangerine with green leaves in both paws, big sunny smile', 1),
+  e('jj_haenyeo', '해녀', '물질 다녀올게', '🤿', 'dressed as a Jeju haenyeo diver in a black wetsuit and diving goggles, holding an orange float buoy, cheerful', null, 2),
+  e('jj_hareubang', '돌하르방', '하르방 흉내', '🗿', 'imitating a Jeju dol hareubang stone statue pose with both hands on the belly, serious puffed cheeks and big round eyes', null, 10),
+  e('jj_swim', '바다 수영', '바다 최고!', '🏖️', 'in a swim tube with sunglasses on the head, splashing water, holiday grin', null, 8),
+  e('jj_oreum', '오름 등산', '오름 정상!', '⛰️', 'wearing a hiking cap and backpack, standing proudly with one fist up on a small green hill top', null, 2),
+  e('jj_pork', '흑돼지', '흑돼지 맛있다', '🥓', 'grilling black pork on a small grill with tongs, drooling happy face, sizzling steam', null, 7),
+  e('jj_wind', '제주 바람', '바람 미쳤다', '🌬️', 'hair blown wildly sideways by strong wind, holding onto a hat, squinting funny face, wind lines', 'fur blown wildly sideways by strong wind, squinting funny face, wind lines', 3),
+  e('jj_cancel', '결항 멘붕', '비행기 결항…', '✈️', 'holding a suitcase handle in despair, a small airplane with a red X above, teary panicked face', null, 5),
+  e('jj_rentcar', '렌터카', '드라이브 가자!', '🚙', 'driving a cute small open car with one hand waving, sunglasses, happy breeze', null, 8),
+  e('jj_halla', '한라산', '한라산 등반', '🏔️', 'wearing a warm beanie and hiking poles in both hands, panting but proud with a snowy mountain peak icon', null, 6),
+  e('jj_peel', '귤 까줄게', '귤 까줄게', '🍊', 'peeling a tangerine and offering a segment forward with a kind smile, a pile of tangerines beside', null, 1),
+];
+
 export const LIBRARY_GROUPS = [
   { id: 'basic', label: '기본', items: BASIC },
   { id: 'office', label: '직장인', items: OFFICE },
@@ -126,6 +190,10 @@ export const LIBRARY_GROUPS = [
   { id: 'linkclean', label: '링크클린', items: LINKCLEAN },
   { id: 'creamus', label: '크리머스', items: CREAMUS },
   { id: 'xmas', label: '크리스마스', items: XMAS },
+  { id: 'react', label: '리액션', items: REACT },
+  { id: 'greet', label: '안부·어른용', items: GREET },
+  { id: 'event', label: '기념일', items: EVENT },
+  { id: 'jeju', label: '제주', items: JEJU },
 ];
 
 const ALL = Object.fromEntries(LIBRARY_GROUPS.flatMap((g) => g.items).map((x) => [x.id, x]));
@@ -133,11 +201,15 @@ const ALL = Object.fromEntries(LIBRARY_GROUPS.flatMap((g) => g.items).map((x) =>
 const ids = (s) => s.split(' ');
 export const PACKS = [
   { id: 'basic', label: '기본', emoji: '😊', ids: BASIC.map((x) => x.id) },
+  { id: 'react', label: '리액션', emoji: '🔥', ids: REACT.map((x) => x.id) },
+  { id: 'greet', label: '안부·어른용', emoji: '🙏', ids: GREET.map((x) => x.id) },
   { id: 'office', label: '직장인', emoji: '💼', ids: ids('commute coffee yes_sir thanks_bow sorry_bow report lunch overtime payday leave_work headache fighting') },
   { id: 'love', label: '연애·애정', emoji: '💕', ids: ids('miss_you kiss finger_heart shy jealous hug_me love good_night good_morning sad angry ok') },
   { id: 'daily', label: '인사·일상', emoji: '🌼', ids: ids('hello bye flowers sorry hungry yummy dance surprised bored clap lol thinking') },
   { id: 'pet', label: '반려동물 일상', emoji: '🐾', ids: ids('box back_view stretch roll treat laptop knead peek subway im_ok sleep cool') },
+  { id: 'event', label: '기념일', emoji: '🎉', ids: EVENT.map((x) => x.id) },
   { id: 'xmas', label: '크리스마스', emoji: '🎄', ids: XMAS.map((x) => x.id) },
+  { id: 'jeju', label: '제주', emoji: '🍊', ids: JEJU.map((x) => x.id) },
   { id: 'linkclean', label: '링크클린 손님용', emoji: '🧽', ids: LINKCLEAN.map((x) => x.id) },
   { id: 'creamus', label: '크리머스 손님용', emoji: '🍰', ids: CREAMUS.map((x) => x.id) },
 ];
