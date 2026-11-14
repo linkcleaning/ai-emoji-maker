@@ -160,7 +160,7 @@ export function buildSheetPrompt({ category, style, bgMode, emotions = EMOTIONS 
     'Keep the character design perfectly consistent across all 12 stickers; only expression and pose change.',
     'Order left-to-right, top-to-bottom:',
     list,
-    'No grid lines, no numbers, no captions, no watermark.',
+    'No grid lines, no numbers, no captions, no watermark. Do NOT write any words or letters (Korean or English) anywhere — the names in the list above are only instructions, never draw them as text.',
     ANATOMY + ' This applies to each of the 12 stickers separately: each cell contains the character exactly once.',
     backgroundText(bgMode),
     'High quality, 4k detail.',

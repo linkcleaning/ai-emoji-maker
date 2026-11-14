@@ -33,12 +33,12 @@ async function toThumb(dataUrl) {
 
 /** 관리자: 그림이 없는 표정을 같은 캐릭터로 AI가 그려서 표정 구성 미리보기에 넣기 */
 export default function SampleMaker({ notify }) {
-  useServerSamples();
+  const srv = useServerSamples();
   const [style, setStyle] = useState('3d');
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState({}); // packId → 상태 문구
 
-  const packs = useMemo(() => PACKS.filter((p) => p.id !== 'basic').map((p) => {
+  const packs = useMemo(() => PACKS.map((p) => {
     const set = packSet(p.id);
     const missing = set.filter((x) => !hasOwnSample(x.id, style, p.id)).length;
     return { ...p, set, missing };
@@ -58,7 +58,8 @@ export default function SampleMaker({ notify }) {
         try {
           say('그리는 중… (30초쯤)');
           const prompt = buildSheetPrompt({ category: 'person', style, bgMode: 'chroma', emotions: p.set })
-            + '\nCHARACTER: draw exactly the same character as in ALL the reference images — same face, eyes, hairstyle and hair color, same body proportions. Keep a plain simple outfit unless the pose mentions one.';
+            + '\nCHARACTER: draw exactly the same character as in ALL the reference images — same face, eyes, hairstyle and hair color, same body proportions. Keep a plain simple outfit unless the pose mentions one.'
+            + '\nABSOLUTELY NO TEXT: do not write any words, letters, Korean or English captions, labels or speech-bubble text anywhere in the image (the names in the list are only for you).';
           const raw = await generateImage({ settings, refs, prompt, shape: 'sheet', hedgeMs: 40000, onWait: (sec) => say(`잠시 대기 · ${sec}초 뒤 다시`) });
           say('오려내는 중…');
           const pieces = await sliceSheet(raw, 3, 4);
@@ -105,7 +106,9 @@ export default function SampleMaker({ notify }) {
           <li key={p.id} className="rounded-xl bg-cream-100 p-2">
             <div className="flex items-center gap-2 text-xs">
               <span className="font-bold flex-1 min-w-0 truncate">{p.emoji} {p.label}</span>
-              <span className={p.missing ? 'text-peach-600 font-bold' : 'text-cocoa-400'}>{p.missing ? `${p.missing}개 없음` : '그림 있음'}</span>
+              {p.id === 'basic' && !p.set.every((x) => srv.keys.has(`${style}/basic/${x.id}`))
+                ? <span className="text-cocoa-400">다른 캐릭터</span>
+                : <span className={p.missing ? 'text-peach-600 font-bold' : 'text-cocoa-400'}>{p.missing ? `${p.missing}개 없음` : '그림 있음'}</span>}
               <button disabled={busy} onClick={() => run([p])} className="font-bold text-peach-600 disabled:opacity-40">{p.missing ? '만들기' : '다시'}</button>
               <button disabled={busy} onClick={() => reset(p)} className="text-cocoa-400 disabled:opacity-40" aria-label={`${p.label} 만든 그림 지우기`}>지우기</button>
             </div>

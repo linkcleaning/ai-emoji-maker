@@ -20,7 +20,7 @@ import { makeAnimatedSticker, motionLabel } from './lib/animate.js';
 import { savePack, listPacks, newPackId } from './lib/vault.js';
 import VaultModal from './components/VaultModal.jsx';
 import { findExpression, matchPack as matchPackOf, PACKS as ALL_PACKS } from './lib/expressions.js';
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 
 const STORE_KEY = 'emoji-maker-settings-v1';
 // 미리보기 빌드에서는 데모 모드로 시작 (빌드 시 __DEMO_DEFAULT__ 정의)
